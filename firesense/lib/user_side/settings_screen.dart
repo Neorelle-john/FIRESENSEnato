@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:firesense/home_screen.dart';
-import 'package:firesense/material_screen.dart';
-import 'package:firesense/emergency_dial_screen.dart';
+import 'package:firesense/user_side/home_screen.dart';
+import 'package:firesense/user_side/material_screen.dart';
+import 'package:firesense/user_side/emergency_dial_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firesense/signin_screen.dart';
+import 'package:firesense/credentials/signin_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);

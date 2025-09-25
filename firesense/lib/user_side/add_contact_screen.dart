@@ -1,7 +1,7 @@
 
-import 'package:firesense/emergency_dial_screen.dart';
-import 'package:firesense/material_screen.dart';
-import 'package:firesense/settings_screen.dart';
+import 'package:firesense/user_side/emergency_dial_screen.dart';
+import 'package:firesense/user_side/material_screen.dart';
+import 'package:firesense/user_side/settings_screen.dart';
 import 'package:flutter/material.dart';
 
 class AddContactScreen extends StatelessWidget {

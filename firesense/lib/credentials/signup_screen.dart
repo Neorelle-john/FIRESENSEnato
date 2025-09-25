@@ -139,7 +139,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red[800],
+                          backgroundColor: Color(0xFF8B0000),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -229,7 +229,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ElevatedButton(
                         onPressed: _signUp,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red[800],
+                          backgroundColor: Color(0xFF8B0000),
                           minimumSize: const Size.fromHeight(52),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -262,7 +262,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               TextSpan(
                                 text: 'Sign In Here',
                                 style: TextStyle(
-                                  color: Colors.red[800],
+                                  color: Color(0xFF8B0000),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),

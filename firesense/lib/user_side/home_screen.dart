@@ -1,8 +1,8 @@
-import 'package:firesense/material_screen.dart';
-import 'package:firesense/emergency_dial_screen.dart';
-import 'package:firesense/settings_screen.dart';
+import 'package:firesense/user_side/material_screen.dart';
+import 'package:firesense/user_side/emergency_dial_screen.dart';
+import 'package:firesense/user_side/settings_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firesense/add_contact_screen.dart';
+import 'package:firesense/user_side/add_contact_screen.dart';
 import 'contacts_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,7 +13,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final PageController _contactsPageController = PageController(viewportFraction: 0.88);
+  final PageController _contactsPageController = PageController(
+    viewportFraction: 0.88,
+  );
   int _currentContactsPage = 0;
 
   @override
@@ -34,14 +36,22 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: bgGrey,
         elevation: 0,
-        title: const Text('Home', style: TextStyle(color: Color(0xFF8B0000), fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Home',
+          style: TextStyle(
+            color: Color(0xFF8B0000),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.people, color: Colors.black87),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const ContactsListScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const ContactsListScreen(),
+                ),
               );
             },
           ),
@@ -50,7 +60,9 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddContactScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const AddContactScreen(),
+                ),
               );
             },
           ),
@@ -92,7 +104,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: const [
                           Text(
                             'Welcome to FireSense',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           SizedBox(height: 6),
                           Text(
@@ -103,7 +119,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(Icons.local_fire_department, color: Colors.white, size: 48),
+                    const Icon(
+                      Icons.local_fire_department,
+                      color: Colors.white,
+                      size: 48,
+                    ),
                   ],
                 ),
               ),
@@ -112,12 +132,17 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Contacts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const Text(
+                    'Contacts',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
                   TextButton(
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const ContactsListScreen()),
+                        MaterialPageRoute(
+                          builder: (context) => const ContactsListScreen(),
+                        ),
                       );
                     },
                     child: const Text('View all'),
@@ -138,7 +163,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                   itemBuilder: (context, index) {
                     // Sample contact cards
-                    final names = ['Jon Mugcal', 'Neollere Tougosa', 'Jonaur Willison'];
+                    final names = [
+                      'Jon Mugcal',
+                      'Neollere Tougosa',
+                      'Jonaur Willison',
+                    ];
                     final name = names[index % names.length];
                     return Container(
                       margin: const EdgeInsets.only(right: 12),
@@ -159,7 +188,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           CircleAvatar(
                             radius: 26,
                             backgroundColor: lightRed,
-                            child: const Icon(Icons.person, color: Colors.white),
+                            child: const Icon(
+                              Icons.person,
+                              color: Colors.white,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -167,9 +199,20 @@ class _HomeScreenState extends State<HomeScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                Text(
+                                  name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 const SizedBox(height: 2),
-                                const Text('+63 900 000 0000', style: TextStyle(color: Colors.black54, fontSize: 12)),
+                                const Text(
+                                  '+63 900 000 0000',
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -187,25 +230,35 @@ class _HomeScreenState extends State<HomeScreen> {
               // Dots indicator
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (dotIndex) =>
-                  Container(
+                children: List.generate(
+                  3,
+                  (dotIndex) => Container(
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     width: 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: dotIndex == _currentContactsPage ? Colors.black87 : Colors.black26,
+                      color:
+                          dotIndex == _currentContactsPage
+                              ? Colors.black87
+                              : Colors.black26,
                       shape: BoxShape.circle,
                     ),
                   ),
                 ),
               ),
               const SizedBox(height: 24),
-              const Text('Hotlines', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              const Text(
+                'Hotlines',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
               const SizedBox(height: 12),
               // Hotline 1
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: cardWhite,
                   borderRadius: BorderRadius.circular(16),
@@ -221,26 +274,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     CircleAvatar(
                       backgroundColor: lightRed,
-                      child: const Icon(Icons.local_fire_department, color: Colors.white),
+                      child: const Icon(
+                        Icons.local_fire_department,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
-                      child: Text('(02) 8426-0246', style: TextStyle(fontSize: 16)),
+                      child: Text(
+                        '(02) 8426-0246',
+                        style: TextStyle(fontSize: 16),
+                      ),
                     ),
                     TextButton.icon(
                       onPressed: () {},
                       icon: Icon(Icons.call, color: primaryRed),
                       label: Text('Call', style: TextStyle(color: primaryRed)),
-                      style: TextButton.styleFrom(
-                        foregroundColor: primaryRed,
-                      ),
+                      style: TextButton.styleFrom(foregroundColor: primaryRed),
                     ),
                   ],
                 ),
               ),
               // Hotline 2
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: cardWhite,
                   borderRadius: BorderRadius.circular(16),
@@ -260,15 +320,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
-                      child: Text('(+63) 998 598 5134', style: TextStyle(fontSize: 16)),
+                      child: Text(
+                        '(+63) 998 598 5134',
+                        style: TextStyle(fontSize: 16),
+                      ),
                     ),
                     TextButton.icon(
                       onPressed: () {},
                       icon: Icon(Icons.call, color: primaryRed),
                       label: Text('Call', style: TextStyle(color: primaryRed)),
-                      style: TextButton.styleFrom(
-                        foregroundColor: primaryRed,
-                      ),
+                      style: TextButton.styleFrom(foregroundColor: primaryRed),
                     ),
                   ],
                 ),
@@ -303,10 +364,7 @@ class _HomeScreenState extends State<HomeScreen> {
           showSelectedLabels: true,
           showUnselectedLabels: true,
           items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: 'Home',
-            ),
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(
               icon: Icon(Icons.menu_book),
               label: 'Materials',
@@ -330,9 +388,11 @@ class _HomeScreenState extends State<HomeScreen> {
             } else if (index == 2) {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => const EmergencyDialScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const EmergencyDialScreen(),
+                ),
               );
-            } else if (index == 3){
+            } else if (index == 3) {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
@@ -344,4 +404,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-} 
+}

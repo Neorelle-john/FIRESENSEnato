@@ -1,9 +1,9 @@
-import 'package:firesense/add_contact_screen.dart';
-import 'package:firesense/contacts_list_screen.dart';
-import 'package:firesense/settings_screen.dart';
+import 'package:firesense/user_side/add_contact_screen.dart';
+import 'package:firesense/user_side/contacts_list_screen.dart';
+import 'package:firesense/user_side/settings_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firesense/emergency_dial_screen.dart';
-import 'package:firesense/home_screen.dart';
+import 'package:firesense/user_side/emergency_dial_screen.dart';
+import 'package:firesense/user_side/home_screen.dart';
 
 class MaterialScreen extends StatefulWidget {
   const MaterialScreen({Key? key}) : super(key: key);

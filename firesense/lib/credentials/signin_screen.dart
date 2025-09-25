@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../admin_side/home_screen.dart';
 import 'signup_screen.dart';
-import 'home_screen.dart';
+import '../user_side/home_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -34,18 +35,24 @@ class _SignInScreenState extends State<SignInScreen> {
 
     try {
       await _auth.signInWithEmailAndPassword(email: email, password: password);
-
+      if (!mounted) return;
       // Show success message
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Signed in successfully!')));
-
-      // Navigate to HomeScreen and remove previous routes
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-        (Route<dynamic> route) => false,
-      );
+      if (email == 'admin@gmail.com') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminHomeScreen()),
+          (Route<dynamic> route) => false,
+        );
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (Route<dynamic> route) => false,
+        );
+      }
     } on FirebaseAuthException catch (e) {
       String message;
 
@@ -139,7 +146,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       child: ElevatedButton(
                         onPressed: () => Navigator.pop(context),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red[800],
+                          backgroundColor: Color(0xFF8B0000),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -181,7 +188,12 @@ class _SignInScreenState extends State<SignInScreen> {
           ),
           SafeArea(
             child: SingleChildScrollView(
-              padding: EdgeInsets.only(top: 350, left: 24, right: 24, bottom: MediaQuery.of(context).viewInsets.bottom + 16),
+              padding: EdgeInsets.only(
+                top: 350,
+                left: 24,
+                right: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
               child: Column(
                 children: [
                   const Align(
@@ -237,7 +249,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     child: ElevatedButton(
                       onPressed: _signIn,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red[800],
+                        backgroundColor: Color(0xFF8B0000),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -268,7 +280,7 @@ class _SignInScreenState extends State<SignInScreen> {
                           TextSpan(
                             text: 'Sign Up Here',
                             style: TextStyle(
-                              color: Colors.red[800],
+                              color: Color(0xFF8B0000),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
