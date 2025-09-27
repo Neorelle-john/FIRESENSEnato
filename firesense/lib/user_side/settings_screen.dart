@@ -34,7 +34,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final Color cardGrey = const Color(0xFFD9D9D9);
     final Color cardWhite = Colors.white;
 
-    Widget settingsTile({required String title, VoidCallback? onTap, Widget? trailing}) {
+    Widget settingsTile({
+      required String title,
+      VoidCallback? onTap,
+      Widget? trailing,
+    }) {
       return Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -45,7 +49,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Row(
           children: [
             Expanded(
-              child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
             ),
             if (trailing != null) trailing,
             if (onTap != null && trailing == null)
@@ -60,7 +70,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         backgroundColor: lightGrey,
         elevation: 0,
-        title: const Text('Settings', style: TextStyle(color: Color(0xFF8B0000), fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Settings',
+          style: TextStyle(
+            color: Color(0xFF8B0000),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         automaticallyImplyLeading: false,
       ),
       body: Padding(
@@ -68,16 +84,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           children: [
             const SizedBox(height: 8),
-            const Text('Account', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
+            const Text(
+              'Account',
+              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+            ),
             const SizedBox(height: 8),
             settingsTile(title: 'Profile', onTap: () {}),
             const SizedBox(height: 8),
-            const Text('Device', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
+            const Text(
+              'Device',
+              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+            ),
             const SizedBox(height: 8),
             settingsTile(title: 'Connected Devices', onTap: () {}),
             settingsTile(title: 'Test alarm', onTap: () {}),
             const SizedBox(height: 8),
-            const Text('Alert and Notification', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
+            const Text(
+              'Alert and Notification',
+              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+            ),
             const SizedBox(height: 8),
             settingsTile(
               title: 'Enable Fire alerts',
@@ -95,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               trailing: Switch(
                 value: notificationTone,
                 onChanged: (val) => setState(() => notificationTone = val),
-                  activeColor: Colors.white,
+                activeColor: Colors.white,
                 activeTrackColor: const Color.fromARGB(206, 118, 15, 15),
                 inactiveThumbColor: primaryRed,
                 inactiveTrackColor: Colors.grey[300],
@@ -113,7 +138,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text('Emergency Contacts', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16)),
+            const Text(
+              'Emergency Contacts',
+              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+            ),
             const SizedBox(height: 8),
             settingsTile(title: 'Manage Contacts', onTap: () {}),
             settingsTile(title: 'Emergency message template', onTap: () {}),
@@ -176,17 +204,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             } else if (index == 2) {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => const EmergencyDialScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const EmergencyDialScreen(),
+                ),
               );
             } else if (index == 3) {
               // Already on Settings
             }
           },
           items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: 'Home',
-            ),
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
             BottomNavigationBarItem(
               icon: Icon(Icons.menu_book),
               label: 'Materials',
@@ -204,4 +231,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-} 
+}

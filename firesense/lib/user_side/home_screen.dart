@@ -4,6 +4,8 @@ import 'package:firesense/user_side/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firesense/user_side/add_contact_screen.dart';
 import 'contacts_list_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -17,6 +19,29 @@ class _HomeScreenState extends State<HomeScreen> {
     viewportFraction: 0.88,
   );
   int _currentContactsPage = 0;
+  Future<List<DocumentSnapshot>>? _contactsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    refreshContacts();
+  }
+
+  void refreshContacts() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _contactsFuture = Future.value([]);
+    } else {
+      _contactsFuture = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('contacts')
+          .orderBy('name')
+          .get()
+          .then((snapshot) => snapshot.docs);
+    }
+    setState(() {});
+  }
 
   @override
   void dispose() {
@@ -26,9 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryRed = const Color(0xFF8B0000); // Deep red
-    final Color lightRed = const Color(0xFFD9A7A7); // Light red for contacts
-    final Color bgGrey = const Color(0xFFF5F5F5); // Background
+    final Color primaryRed = const Color(0xFF8B0000);
+    final Color lightRed = const Color(0xFFD9A7A7);
+    final Color bgGrey = const Color(0xFFF5F5F5);
     final Color cardWhite = Colors.white;
 
     return Scaffold(
@@ -50,20 +75,21 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const ContactsListScreen(),
+                  builder: (context) => ContactsListScreen(onContactsChanged: refreshContacts),
                 ),
               );
             },
           ),
           IconButton(
             icon: const Icon(Icons.person_add, color: Colors.black87),
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const AddContactScreen(),
+                  builder: (context) => AddContactScreen(onContactsChanged: refreshContacts),
                 ),
               );
+              refreshContacts(); // Refresh contacts after adding
             },
           ),
         ],
@@ -150,101 +176,194 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Contacts Slider
-              SizedBox(
-                height: 140,
-                child: PageView.builder(
-                  controller: _contactsPageController,
-                  itemCount: 3,
-                  onPageChanged: (index) {
-                    setState(() {
-                      _currentContactsPage = index;
-                    });
-                  },
-                  itemBuilder: (context, index) {
-                    // Sample contact cards
-                    final names = [
-                      'Jon Mugcal',
-                      'Neollere Tougosa',
-                      'Jonaur Willison',
-                    ];
-                    final name = names[index % names.length];
-                    return Container(
-                      margin: const EdgeInsets.only(right: 12),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: cardWhite,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
+              // Contacts Slider (Firebase)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: SizedBox(
+                  height: 140,
+                  child: FutureBuilder<List<DocumentSnapshot>>(
+                    future: _contactsFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final contacts = snapshot.data ?? [];
+                      if (contacts.isEmpty) {
+                        return Center(
+                          child: Text(
+                            'No contacts yet.',
+                            style: TextStyle(color: Colors.black54),
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 26,
-                            backgroundColor: lightRed,
-                            child: const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                            ),
+                        );
+                      }
+                      if (contacts.length == 1) {
+                        final contact = contacts.first;
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 26,
+                                backgroundColor: const Color(0xFFD9A7A7),
+                                child: const Icon(
+                                  Icons.person,
+                                  color: Colors.white,
                                 ),
-                                const SizedBox(height: 2),
-                                const Text(
-                                  '+63 900 000 0000',
-                                  style: TextStyle(
-                                    color: Colors.black54,
-                                    fontSize: 12,
-                                  ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      contact['name'] ?? '',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      contact['phone'] ?? '',
+                                      style: const TextStyle(
+                                        color: Colors.black54,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  Icons.phone,
+                                  color: const Color(0xFF8B0000),
+                                ),
+                                onPressed: () {},
+                              ),
+                            ],
                           ),
-                          IconButton(
-                            icon: Icon(Icons.phone, color: primaryRed),
-                            onPressed: () {},
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                        );
+                      } else {
+                        return PageView.builder(
+                          controller: _contactsPageController,
+                          itemCount: contacts.length,
+                          onPageChanged: (index) {
+                            setState(() {
+                              _currentContactsPage = index;
+                            });
+                          },
+                          itemBuilder: (context, index) {
+                            final contact = contacts[index];
+                            return Padding(
+                              padding: EdgeInsets.only(
+                                left: index == 0 ? 0 : 8,
+                                right: index == contacts.length - 1 ? 0 : 8,
+                              ),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 26,
+                                      backgroundColor: const Color(0xFFD9A7A7),
+                                      child: const Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            contact['name'] ?? '',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            contact['phone'] ?? '',
+                                            style: const TextStyle(
+                                              color: Colors.black54,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.phone,
+                                        color: const Color(0xFF8B0000),
+                                      ),
+                                      onPressed: () {},
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }
+                    },
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
-              // Dots indicator
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  3,
-                  (dotIndex) => Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color:
-                          dotIndex == _currentContactsPage
-                              ? Colors.black87
-                              : Colors.black26,
-                      shape: BoxShape.circle,
+              // Dots indicator (dynamic)
+              FutureBuilder<List<DocumentSnapshot>>(
+                future: _contactsFuture,
+                builder: (context, snapshot) {
+                  final contacts = snapshot.data ?? [];
+                  if (contacts.length <= 1) {
+                    return const SizedBox.shrink();
+                  }
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      contacts.length,
+                      (dotIndex) => Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color:
+                              dotIndex == _currentContactsPage
+                                  ? Colors.black87
+                                  : Colors.black26,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 24),
               const Text(

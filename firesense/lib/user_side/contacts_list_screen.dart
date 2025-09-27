@@ -1,82 +1,114 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firesense/user_side/add_contact_screen.dart';
+import 'package:firesense/user_side/edit_contact_screen.dart';
 import 'package:flutter/material.dart';
-import 'add_contact_screen.dart';
 
 class ContactsListScreen extends StatelessWidget {
-  const ContactsListScreen({Key? key}) : super(key: key);
+  final VoidCallback? onContactsChanged;
+
+  const ContactsListScreen({Key? key, this.onContactsChanged})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final Color primaryRed = const Color(0xFF8B0000);
-
-    // Placeholder data for now. Replace with your stored contacts source.
-    final List<Map<String, String>> contacts = [
-      {"name": "Jon Mugcal", "phone": "+63 900 000 0001"},
-      {"name": "Neollere Tougosa", "phone": "+63 900 000 0002"},
-      {"name": "Jonaur Willison", "phone": "+63 900 000 0003"},
-    ];
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Center(child: Text('Not logged in.'));
+    }
+    final contactsRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('contacts');
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Contacts', style: TextStyle(color: Color(0xFF8B0000), fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFFF5F5F5),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        // actions: [
-        //   IconButton(
-        //     icon: const Icon(Icons.add, color: Colors.black87),
-        //     onPressed: () {
-        //       Navigator.push(
-        //         context,
-        //         MaterialPageRoute(builder: (context) => const AddContactScreen()),
-        //       );
-        //     },
-        //   ),
-        // ],
-      ),
       backgroundColor: const Color(0xFFF5F5F5),
-      body: contacts.isEmpty
-          ? const Center(
-              child: Text(
-                'No contacts yet. Tap + to add one.',
-                style: TextStyle(color: Colors.black54),
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-              itemBuilder: (context, index) {
-                final contact = contacts[index];
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: const Color(0xFFD9A7A7),
-                      child: const Icon(Icons.person, color: Colors.white),
-                    ),
-                    title: Text(contact["name"] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(contact["phone"] ?? ''),
-                    trailing: Icon(Icons.more_vert, color: Colors.grey[600]),
-                    onTap: () {},
-                  ),
-                );
-              },
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemCount: contacts.length,
-            ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: primaryRed,
-        foregroundColor: Colors.white,
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AddContactScreen()),
+      appBar: AppBar(
+        title: const Text(
+          'Contacts',
+          style: TextStyle(
+            color: Color(0xFF8B0000),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: const Color(0xFFF5F5F5),
+        iconTheme: const IconThemeData(color: Color(0xFF8B0000)),
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: contactsRef.orderBy('name').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            print(snapshot.error);
+            return const Center(child: Text('Error loading contacts.'));
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snapshot.data!.docs;
+          if (docs.isEmpty) {
+            return const Center(child: Text('No contacts yet.'));
+          }
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final doc = docs[index];
+              final name = doc['name'] ?? '';
+              final phone = doc['phone'] ?? '';
+              return ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.person)),
+                title: Text(name),
+                subtitle: Text(phone),
+                trailing: PopupMenuButton<String>(
+                  onSelected: (value) async {
+                    if (value == 'edit') {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder:
+                              (context) => EditContactScreen(
+                                contactDoc: doc,
+                                onContactsChanged: onContactsChanged,
+                              ),
+                        ),
+                      );
+                      if (onContactsChanged != null) onContactsChanged!();
+                    } else if (value == 'delete') {
+                      await contactsRef.doc(doc.id).delete();
+                      if (onContactsChanged != null) onContactsChanged!();
+                    }
+                  },
+                  itemBuilder:
+                      (context) => [
+                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Delete'),
+                        ),
+                      ],
+                ),
+              );
+            },
           );
         },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Contact'),
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: primaryRed,
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (context) =>
+                      AddContactScreen(onContactsChanged: onContactsChanged),
+            ),
+          );
+          if (onContactsChanged != null) onContactsChanged!();
+        },
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
+        shape: const CircleBorder(),
+        tooltip: 'Add Contact',
       ),
     );
   }
-} 
+}

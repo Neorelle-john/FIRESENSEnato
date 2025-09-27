@@ -5,19 +5,35 @@ import 'package:firesense/user_side/emergency_dial_screen.dart';
 import 'package:firesense/user_side/material_screen.dart';
 import 'package:firesense/user_side/settings_screen.dart';
 
-class AddContactScreen extends StatefulWidget {
+class EditContactScreen extends StatefulWidget {
+  final DocumentSnapshot contactDoc;
   final VoidCallback? onContactsChanged;
 
-  const AddContactScreen({Key? key, this.onContactsChanged}) : super(key: key);
+  const EditContactScreen({
+    Key? key,
+    required this.contactDoc,
+    this.onContactsChanged,
+  }) : super(key: key);
 
   @override
-  State<AddContactScreen> createState() => _AddContactScreenState();
+  State<EditContactScreen> createState() => _EditContactScreenState();
 }
 
-class _AddContactScreenState extends State<AddContactScreen> {
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
+class _EditContactScreenState extends State<EditContactScreen> {
+  late TextEditingController _nameController;
+  late TextEditingController _phoneController;
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(
+      text: widget.contactDoc['name'] ?? '',
+    );
+    _phoneController = TextEditingController(
+      text: widget.contactDoc['phone'] ?? '',
+    );
+  }
 
   @override
   void dispose() {
@@ -26,7 +42,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
     super.dispose();
   }
 
-  Future<void> _addContact() async {
+  Future<void> _updateContact() async {
     final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
     if (name.isEmpty || phone.isEmpty) return;
@@ -47,7 +63,10 @@ class _AddContactScreenState extends State<AddContactScreen> {
         .doc(user.uid)
         .collection('contacts');
 
-    await contactsRef.add({'name': name, 'phone': phone});
+    await contactsRef.doc(widget.contactDoc.id).update({
+      'name': name,
+      'phone': phone,
+    });
     setState(() => _loading = false);
 
     widget.onContactsChanged?.call(); // Notify contacts list to update
@@ -75,7 +94,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Add Contact',
+          'Edit Contact',
           style: TextStyle(
             color: Color(0xFF8B0000),
             fontWeight: FontWeight.bold,
@@ -129,7 +148,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _loading ? null : _addContact,
+                  onPressed: _loading ? null : _updateContact,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryRed,
                     foregroundColor: Colors.white,
@@ -141,7 +160,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
                       _loading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(
-                            'Add Contact',
+                            'Update Contact',
                             style: TextStyle(fontSize: 16),
                           ),
                 ),
