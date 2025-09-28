@@ -52,7 +52,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final Color primaryRed = const Color(0xFF8B0000);
-    final Color lightRed = const Color(0xFFD9A7A7);
     final Color bgGrey = const Color(0xFFF5F5F5);
     final Color cardWhite = Colors.white;
 
@@ -75,7 +74,10 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ContactsListScreen(onContactsChanged: refreshContacts),
+                  builder:
+                      (context) => ContactsListScreen(
+                        onContactsChanged: refreshContacts,
+                      ),
                 ),
               );
             },
@@ -86,7 +88,9 @@ class _HomeScreenState extends State<HomeScreen> {
               await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => AddContactScreen(onContactsChanged: refreshContacts),
+                  builder:
+                      (context) =>
+                          AddContactScreen(onContactsChanged: refreshContacts),
                 ),
               );
               refreshContacts(); // Refresh contacts after adding
@@ -371,13 +375,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
               const SizedBox(height: 12),
-              // Hotline 1
+              // Bureau of Fire Protection Card
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: cardWhite,
                   borderRadius: BorderRadius.circular(16),
@@ -391,35 +392,70 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      backgroundColor: lightRed,
-                      child: const Icon(
-                        Icons.local_fire_department,
-                        color: Colors.white,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/images/BPF.png',
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        '(02) 8426-0246',
-                        style: TextStyle(fontSize: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Bureau of Fire Protection',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            '(02) 8426-0246',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                              color: Color(0xFF8B0000),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Urdaneta City, Philippines',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    TextButton.icon(
+                    ElevatedButton(
                       onPressed: () {},
-                      icon: Icon(Icons.call, color: primaryRed),
-                      label: Text('Call', style: TextStyle(color: primaryRed)),
-                      style: TextButton.styleFrom(foregroundColor: primaryRed),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryRed,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        minimumSize: const Size(0, 32),
+                        elevation: 0,
+                      ),
+                      child: const Text('Call', style: TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),
               ),
-              // Hotline 2
+              // Philippine National Police Card
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: cardWhite,
                   borderRadius: BorderRadius.circular(16),
@@ -433,22 +469,63 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      backgroundColor: lightRed,
-                      child: const Icon(Icons.local_phone, color: Colors.white),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        '(+63) 998 598 5134',
-                        style: TextStyle(fontSize: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/images/PNP.png',
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
                       ),
                     ),
-                    TextButton.icon(
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Philippine National Police',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            '(+63) 998 598 5134',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                              color: Color(0xFF8B0000),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Urdaneta City, Philippines',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
                       onPressed: () {},
-                      icon: Icon(Icons.call, color: primaryRed),
-                      label: Text('Call', style: TextStyle(color: primaryRed)),
-                      style: TextButton.styleFrom(foregroundColor: primaryRed),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryRed,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        minimumSize: const Size(0, 32),
+                        elevation: 0,
+                      ),
+                      child: const Text('Call', style: TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),

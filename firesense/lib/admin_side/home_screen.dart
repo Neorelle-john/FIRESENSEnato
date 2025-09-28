@@ -71,58 +71,177 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         automaticallyImplyLeading: true,
       ),
       drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
+        child: Column(
           children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(color: primaryRed),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.admin_panel_settings,
+            // Enhanced Header
+            Container(
+              height: 180,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [primaryRed, Color(0xFFB22222)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.admin_panel_settings,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: const [
+                                Text(
+                                  'Admin Panel',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                SizedBox(height: 1),
+                                Text(
+                                  'FireSense Management',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'System Administrator',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // Navigation Items
+            Expanded(
+              child: Container(
+                color: const Color(0xFFF8F9FA),
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  children: [
+                    _buildDrawerItem(
+                      icon: Icons.dashboard_outlined,
+                      title: 'Dashboard',
+                      subtitle: 'Overview & Statistics',
+                      index: 0,
+                      isSelected: _selectedIndex == 0,
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.people_outline,
+                      title: 'Clients',
+                      subtitle: 'Manage Client Accounts',
+                      index: 1,
+                      isSelected: _selectedIndex == 1,
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.warning_amber_outlined,
+                      title: 'Alerts',
+                      subtitle: 'Emergency Notifications',
+                      index: 2,
+                      isSelected: _selectedIndex == 2,
+                    ),
+                    _buildDrawerItem(
+                      icon: Icons.settings_outlined,
+                      title: 'Settings',
+                      subtitle: 'System Preferences',
+                      index: 3,
+                      isSelected: _selectedIndex == 3,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Footer
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF8F9FA),
+                border: Border(
+                  top: BorderSide(color: Color(0xFFE9ECEF), width: 1),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: primaryRed.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.security,
                       color: primaryRed,
-                      size: 36,
+                      size: 16,
                     ),
                   ),
-                  SizedBox(height: 12),
-                  Text(
-                    'Admin Panel',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Secure Session',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF495057),
+                          ),
+                        ),
+                        Text(
+                          'Last login: Today',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home, color: primaryRed),
-              title: const Text('Dashboard'),
-              selected: _selectedIndex == 0,
-              onTap: () => _onDrawerTap(0),
-            ),
-            ListTile(
-              leading: const Icon(Icons.people, color: primaryRed),
-              title: const Text('Clients'),
-              selected: _selectedIndex == 1,
-              onTap: () => _onDrawerTap(1),
-            ),
-            ListTile(
-              leading: const Icon(Icons.warning, color: primaryRed),
-              title: const Text('Alerts'),
-              selected: _selectedIndex == 2,
-              onTap: () => _onDrawerTap(2),
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings, color: primaryRed),
-              title: const Text('Settings'),
-              selected: _selectedIndex == 3,
-              onTap: () => _onDrawerTap(3),
             ),
           ],
         ),
@@ -130,182 +249,470 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       body: SafeArea(child: _screens[_selectedIndex]),
     );
   }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required int index,
+    required bool isSelected,
+  }) {
+    const Color primaryRed = Color(0xFF8B0000);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: isSelected ? primaryRed.withOpacity(0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border:
+            isSelected
+                ? Border.all(color: primaryRed.withOpacity(0.3), width: 1)
+                : null,
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: isSelected ? primaryRed : primaryRed.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: isSelected ? Colors.white : primaryRed,
+            size: 20,
+          ),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 15,
+            color: isSelected ? primaryRed : const Color(0xFF495057),
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 12,
+            color:
+                isSelected ? primaryRed.withOpacity(0.7) : Colors.grey.shade600,
+          ),
+        ),
+        onTap: () => _onDrawerTap(index),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
+    );
+  }
 }
 
-// Dashboard widget with View Map button at the bottom
+// Enhanced Dashboard widget with comprehensive data
 class _AdminDashboard extends StatelessWidget {
   const _AdminDashboard();
 
   @override
   Widget build(BuildContext context) {
     const Color primaryRed = Color(0xFF8B0000);
+    const Color cardWhite = Colors.white;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Main dashboard content
-          Expanded(
-            child: ListView(
+          const SizedBox(height: 16),
+
+          // Welcome Header Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: primaryRed,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  offset: Offset(0, 6),
+                ),
+              ],
+              gradient: const LinearGradient(
+                colors: [primaryRed, Color(0xFFB22222)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Row(
               children: [
-                // Devices summary card
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.people, color: primaryRed, size: 36),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Total Clients',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${dummyClients.length} Registered',
-                              style: const TextStyle(
-                                color: Colors.black54,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Admin Dashboard',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      ElevatedButton(
-                        onPressed: () {
-                          // Switch to Clients tab
-                          final state =
-                              context
-                                  .findAncestorStateOfType<
-                                    _AdminHomeScreenState
-                                  >();
-                          state?._onDrawerTap(1);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryRed,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 8,
-                          ),
-                        ),
-                        child: const Text('View Clients'),
+                      SizedBox(height: 6),
+                      Text(
+                        'Monitor and manage FireSense operations.',
+                        style: TextStyle(color: Colors.white70),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 18),
-                // Recent Alerts
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 8,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Recent Alerts',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ListView(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        children: [
-                          ListTile(
-                            leading: const Icon(
-                              Icons.warning,
-                              color: primaryRed,
-                            ),
-                            title: const Text('Fire detected at Building A'),
-                            subtitle: const Text('2 mins ago'),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {},
-                          ),
-                          ListTile(
-                            leading: const Icon(
-                              Icons.warning,
-                              color: primaryRed,
-                            ),
-                            title: const Text('Smoke detected at Warehouse 3'),
-                            subtitle: const Text('10 mins ago'),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {},
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                const SizedBox(width: 12),
+                const Icon(
+                  Icons.admin_panel_settings,
+                  color: Colors.white,
+                  size: 48,
                 ),
               ],
             ),
           ),
-          // View Map Button at the bottom
-          Padding(
-            padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.map, color: Colors.white),
-                label: const Text(
-                  'View Map',
-                  style: TextStyle(color: Colors.white),
+
+          const SizedBox(height: 24),
+
+          // Statistics Cards Row 1
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.people_outline,
+                  title: 'Total Clients',
+                  value: '${dummyClients.length}',
+                  subtitle: 'Registered',
+                  color: primaryRed,
+                  trend: '+12%',
+                  trendColor: Colors.green,
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryRed,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.device_thermostat,
+                  title: 'Active Devices',
+                  value: '24',
+                  subtitle: 'Online',
+                  color: Colors.blue,
+                  trend: '+5%',
+                  trendColor: Colors.green,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Statistics Cards Row 2
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.warning_amber_outlined,
+                  title: 'Active Alerts',
+                  value: '3',
+                  subtitle: 'Pending',
+                  color: Colors.orange,
+                  trend: '-2',
+                  trendColor: Colors.green,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  icon: Icons.location_on_outlined,
+                  title: 'Coverage',
+                  value: '5',
+                  subtitle: 'Zones',
+                  color: Colors.green,
+                  trend: '100%',
+                  trendColor: Colors.green,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Recent Alerts Section
+          _buildSectionHeader('Recent Alerts'),
+
+          Container(
+            decoration: BoxDecoration(
+              color: cardWhite,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                _buildAlertItem(
+                  icon: Icons.local_fire_department,
+                  title: 'Fire detected at Building A',
+                  subtitle: '2 minutes ago',
+                  severity: 'High',
+                  color: Colors.red,
+                  location: 'Zone 1',
+                ),
+                _buildDivider(),
+                _buildAlertItem(
+                  icon: Icons.smoke_free,
+                  title: 'Smoke detected at Warehouse 3',
+                  subtitle: '10 minutes ago',
+                  severity: 'Medium',
+                  color: Colors.orange,
+                  location: 'Zone 2',
+                ),
+                _buildDivider(),
+                _buildAlertItem(
+                  icon: Icons.warning_amber_outlined,
+                  title: 'Temperature spike at Office B',
+                  subtitle: '1 hour ago',
+                  severity: 'Low',
+                  color: Colors.yellow,
+                  location: 'Zone 3',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, left: 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+          color: Colors.grey.shade800,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required String subtitle,
+    required Color color,
+    required String trend,
+    required Color trendColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: trendColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  trend,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: trendColor,
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const AdminMapScreen(),
-                    ),
-                  );
-                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1E1E1E),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1E1E1E),
+            ),
+          ),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlertItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String severity,
+    required Color color,
+    required String location,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Color(0xFF1E1E1E),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  location,
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              severity,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: color,
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildActionCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B0000).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: const Color(0xFF8B0000), size: 24),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: Color(0xFF1E1E1E),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Divider(color: Colors.grey.shade200, height: 1),
     );
   }
 }
@@ -319,7 +726,6 @@ class AdminMapScreen extends StatefulWidget {
 }
 
 class _AdminMapScreenState extends State<AdminMapScreen> {
-  GoogleMapController? _mapController;
   LatLng? _currentPosition;
   bool _locationLoading = true;
 
@@ -403,7 +809,7 @@ class _AdminMapScreenState extends State<AdminMapScreen> {
                   zoom: 14,
                 ),
                 onMapCreated: (controller) {
-                  _mapController = controller;
+                  // Map controller initialized
                 },
                 myLocationEnabled: true,
                 myLocationButtonEnabled: true,

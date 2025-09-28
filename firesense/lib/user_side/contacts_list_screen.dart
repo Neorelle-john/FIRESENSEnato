@@ -55,37 +55,100 @@ class ContactsListScreen extends StatelessWidget {
               final doc = docs[index];
               final name = doc['name'] ?? '';
               final phone = doc['phone'] ?? '';
-              return ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.person)),
-                title: Text(name),
-                subtitle: Text(phone),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (value) async {
-                    if (value == 'edit') {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (context) => EditContactScreen(
-                                contactDoc: doc,
-                                onContactsChanged: onContactsChanged,
+              return Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                child: Card(
+                  elevation: 3,
+                  shadowColor: Colors.black12,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    leading: CircleAvatar(
+                      radius: 24,
+                      backgroundColor: primaryRed.withOpacity(0.1),
+                      child: CircleAvatar(
+                        radius: 20,
+                        backgroundColor: primaryRed,
+                        child: Text(
+                          _initialsFromName(name),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: Color(0xFF1E1E1E),
+                      ),
+                    ),
+                    subtitle: Text(
+                      phone,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    trailing: PopupMenuButton<String>(
+                      icon: const Icon(
+                        Icons.more_vert,
+                        color: Color(0xFF606060),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 6,
+                      onSelected: (value) async {
+                        if (value == 'edit') {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => EditContactScreen(
+                                    contactDoc: doc,
+                                    onContactsChanged: onContactsChanged,
+                                  ),
+                            ),
+                          );
+                          if (onContactsChanged != null) onContactsChanged!();
+                        } else if (value == 'delete') {
+                          await contactsRef.doc(doc.id).delete();
+                          if (onContactsChanged != null) onContactsChanged!();
+                        }
+                      },
+                      itemBuilder:
+                          (context) => [
+                            PopupMenuItem(
+                              value: 'edit',
+                              padding: EdgeInsets.zero,
+                              child: _HoverMenuChild(
+                                label: 'Edit',
+                                hoverBackground: primaryRed,
                               ),
-                        ),
-                      );
-                      if (onContactsChanged != null) onContactsChanged!();
-                    } else if (value == 'delete') {
-                      await contactsRef.doc(doc.id).delete();
-                      if (onContactsChanged != null) onContactsChanged!();
-                    }
-                  },
-                  itemBuilder:
-                      (context) => [
-                        const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Delete'),
-                        ),
-                      ],
+                            ),
+                            PopupMenuItem(
+                              value: 'delete',
+                              padding: EdgeInsets.zero,
+                              child: _HoverMenuChild(
+                                label: 'Delete',
+                                hoverBackground: primaryRed,
+                              ),
+                            ),
+                          ],
+                    ),
+                  ),
                 ),
               );
             },
@@ -108,6 +171,60 @@ class ContactsListScreen extends StatelessWidget {
         child: const Icon(Icons.add, color: Colors.white, size: 28),
         shape: const CircleBorder(),
         tooltip: 'Add Contact',
+      ),
+    );
+  }
+}
+
+String _initialsFromName(String name) {
+  final parts = name.trim().split(RegExp(r"\s+"));
+  if (parts.isEmpty) return '?';
+  final first = parts.first.isNotEmpty ? parts.first[0] : '';
+  final last = parts.length > 1 && parts.last.isNotEmpty ? parts.last[0] : '';
+  final result = (first + last).toUpperCase();
+  return result.isEmpty ? '?' : result;
+}
+
+class _HoverMenuChild extends StatefulWidget {
+  final String label;
+  final Color hoverBackground;
+
+  const _HoverMenuChild({required this.label, required this.hoverBackground});
+
+  @override
+  State<_HoverMenuChild> createState() => _HoverMenuChildState();
+}
+
+class _HoverMenuChildState extends State<_HoverMenuChild> {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color defaultText = const Color(0xFF1E1E1E);
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: _isHovering ? widget.hoverBackground : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Expanded(
+              child: Text(
+                widget.label,
+                style: TextStyle(
+                  color: _isHovering ? Colors.white : defaultText,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

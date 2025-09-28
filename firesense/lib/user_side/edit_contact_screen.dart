@@ -103,70 +103,159 @@ class _EditContactScreenState extends State<EditContactScreen> {
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 48),
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  hintText: 'Contact Name',
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  filled: true,
-                  fillColor: cardWhite,
-                  border: border,
-                  enabledBorder: border,
-                  focusedBorder: border,
-                  contentPadding: const EdgeInsets.symmetric(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 24),
+                Container(
+                  decoration: BoxDecoration(
+                    color: cardWhite,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.symmetric(
                     horizontal: 20,
-                    vertical: 18,
+                    vertical: 24,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundColor: primaryRed.withOpacity(0.12),
+                            child: const Icon(
+                              Icons.edit,
+                              color: Color(0xFF8B0000),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Update contact details',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF1E1E1E),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Keep your contact information accurate so we can reach them quickly.',
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 13.5,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _phoneController,
-                decoration: InputDecoration(
-                  hintText: 'Contact Number',
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  filled: true,
-                  fillColor: cardWhite,
-                  border: border,
-                  enabledBorder: border,
-                  focusedBorder: border,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 18,
+                const SizedBox(height: 16),
+                Card(
+                  elevation: 3,
+                  shadowColor: Colors.black12,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _updateContact,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryRed,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 18,
+                    ),
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: _nameController,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            labelText: 'Full Name',
+                            hintText: 'e.g. Juan Dela Cruz',
+                            prefixIcon: const Icon(Icons.badge_outlined),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: border,
+                            enabledBorder: border,
+                            focusedBorder: border,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 18,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        TextField(
+                          controller: _phoneController,
+                          decoration: InputDecoration(
+                            labelText: 'Phone Number',
+                            hintText: 'e.g. 09xxxxxxxxx',
+                            prefixIcon: const Icon(Icons.phone_outlined),
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: border,
+                            enabledBorder: border,
+                            focusedBorder: border,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 18,
+                            ),
+                          ),
+                          keyboardType: TextInputType.phone,
+                        ),
+                      ],
                     ),
                   ),
-                  child:
-                      _loading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                            'Update Contact',
-                            style: TextStyle(fontSize: 16),
-                          ),
                 ),
-              ),
-              const SizedBox(height: 32),
-            ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton.icon(
+                    onPressed: _loading ? null : _updateContact,
+                    icon:
+                        _loading
+                            ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                            : const Icon(Icons.save_outlined),
+                    label: Text(
+                      _loading ? 'Updating...' : 'Update Contact',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryRed,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 2,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),

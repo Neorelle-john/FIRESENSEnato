@@ -1,7 +1,10 @@
+import 'package:firesense/user_side/contacts_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firesense/user_side/home_screen.dart';
 import 'package:firesense/user_side/material_screen.dart';
 import 'package:firesense/user_side/emergency_dial_screen.dart';
+import 'package:firesense/user_side/profile_screen.dart';
+import 'package:firesense/user_side/message_template_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firesense/credentials/signin_screen.dart';
 
@@ -31,36 +34,97 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final Color primaryRed = const Color(0xFF8B0000);
     final Color lightGrey = const Color(0xFFF5F5F5);
-    final Color cardGrey = const Color(0xFFD9D9D9);
     final Color cardWhite = Colors.white;
 
     Widget settingsTile({
       required String title,
+      required IconData icon,
+      String? subtitle,
       VoidCallback? onTap,
       Widget? trailing,
     }) {
       return Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: cardGrey,
+          color: cardWhite,
           borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: primaryRed.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: primaryRed, size: 20),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                            color: Color(0xFF1E1E1E),
+                          ),
+                        ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (trailing != null) ...[trailing, const SizedBox(width: 8)],
+                  if (onTap != null && trailing == null)
+                    Icon(
+                      Icons.chevron_right,
+                      size: 20,
+                      color: Colors.grey.shade400,
+                    ),
+                ],
               ),
             ),
-            if (trailing != null) trailing,
-            if (onTap != null && trailing == null)
-              const Icon(Icons.chevron_right, size: 28, color: Colors.black87),
-          ],
+          ),
+        ),
+      );
+    }
+
+    Widget sectionHeader(String title) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 24, bottom: 12, left: 4),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: Colors.grey.shade800,
+            letterSpacing: 0.5,
+          ),
         ),
       );
     }
@@ -79,90 +143,153 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         automaticallyImplyLeading: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: ListView(
-          children: [
-            const SizedBox(height: 8),
-            const Text(
-              'Account',
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            settingsTile(title: 'Profile', onTap: () {}),
-            const SizedBox(height: 8),
-            const Text(
-              'Device',
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            settingsTile(title: 'Connected Devices', onTap: () {}),
-            settingsTile(title: 'Test alarm', onTap: () {}),
-            const SizedBox(height: 8),
-            const Text(
-              'Alert and Notification',
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            settingsTile(
-              title: 'Enable Fire alerts',
-              trailing: Switch(
-                value: fireAlerts,
-                onChanged: (val) => setState(() => fireAlerts = val),
-                activeColor: Colors.white,
-                activeTrackColor: const Color.fromARGB(206, 118, 15, 15),
-                inactiveThumbColor: primaryRed,
-                inactiveTrackColor: Colors.grey[300],
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+
+              // Account Section
+              sectionHeader('Account'),
+              settingsTile(
+                title: 'Profile',
+                icon: Icons.person_outline,
+                subtitle: 'Manage your personal information',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ProfileScreen(),
+                    ),
+                  );
+                },
               ),
-            ),
-            settingsTile(
-              title: 'Notification tone',
-              trailing: Switch(
-                value: notificationTone,
-                onChanged: (val) => setState(() => notificationTone = val),
-                activeColor: Colors.white,
-                activeTrackColor: const Color.fromARGB(206, 118, 15, 15),
-                inactiveThumbColor: primaryRed,
-                inactiveTrackColor: Colors.grey[300],
+
+              // Device Section
+              sectionHeader('Device'),
+              settingsTile(
+                title: 'Connected Devices',
+                icon: Icons.devices_other,
+                subtitle: 'View and manage connected sensors',
+                onTap: () {},
               ),
-            ),
-            settingsTile(
-              title: 'Vibration  mode',
-              trailing: Switch(
-                value: vibrationMode,
-                onChanged: (val) => setState(() => vibrationMode = val),
-                activeColor: Colors.white,
-                activeTrackColor: const Color.fromARGB(206, 118, 15, 15),
-                inactiveThumbColor: primaryRed,
-                inactiveTrackColor: Colors.grey[300],
+              settingsTile(
+                title: 'Test Alarm',
+                icon: Icons.warning_amber_outlined,
+                subtitle: 'Test your emergency alert system',
+                onTap: () {},
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Emergency Contacts',
-              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            settingsTile(title: 'Manage Contacts', onTap: () {}),
-            settingsTile(title: 'Emergency message template', onTap: () {}),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _logout,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryRed,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+
+              // Alert and Notification Section
+              sectionHeader('Alerts & Notifications'),
+              settingsTile(
+                title: 'Fire Alerts',
+                icon: Icons.local_fire_department_outlined,
+                subtitle: 'Receive notifications about fire emergencies',
+                trailing: Switch(
+                  value: fireAlerts,
+                  onChanged: (val) => setState(() => fireAlerts = val),
+                  activeColor: Colors.white,
+                  activeTrackColor: primaryRed,
+                  inactiveThumbColor: Colors.grey.shade300,
+                  inactiveTrackColor: Colors.grey.shade200,
+                ),
+              ),
+              settingsTile(
+                title: 'Notification Tone',
+                icon: Icons.volume_up_outlined,
+                subtitle: 'Play sound for emergency alerts',
+                trailing: Switch(
+                  value: notificationTone,
+                  onChanged: (val) => setState(() => notificationTone = val),
+                  activeColor: Colors.white,
+                  activeTrackColor: primaryRed,
+                  inactiveThumbColor: Colors.grey.shade300,
+                  inactiveTrackColor: Colors.grey.shade200,
+                ),
+              ),
+              settingsTile(
+                title: 'Vibration Mode',
+                icon: Icons.vibration,
+                subtitle: 'Vibrate device during emergencies',
+                trailing: Switch(
+                  value: vibrationMode,
+                  onChanged: (val) => setState(() => vibrationMode = val),
+                  activeColor: Colors.white,
+                  activeTrackColor: primaryRed,
+                  inactiveThumbColor: Colors.grey.shade300,
+                  inactiveTrackColor: Colors.grey.shade200,
+                ),
+              ),
+
+              // Emergency Contacts Section
+              sectionHeader('Emergency Contacts'),
+              settingsTile(
+                title: 'Manage Contacts',
+                icon: Icons.contacts_outlined,
+                subtitle: 'Add, edit, or remove emergency contacts',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ContactsListScreen(),
+                    ),
+                  );
+                },
+              ),
+              settingsTile(
+                title: 'Message Template',
+                icon: Icons.message_outlined,
+                subtitle: 'Customize emergency message content',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const MessageTemplateScreen(),
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 32),
+
+              // Logout Button
+              Container(
+                width: double.infinity,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryRed.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton.icon(
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout, size: 20),
+                  label: const Text(
+                    'Sign Out',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryRed,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
                   ),
                 ),
-                child: const Text('Log out'),
               ),
-            ),
-            const SizedBox(height: 16),
-          ],
+
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: Container(

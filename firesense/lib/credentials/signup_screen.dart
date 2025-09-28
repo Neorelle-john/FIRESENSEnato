@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'signin_screen.dart';
 
@@ -48,10 +49,22 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     try {
-      await _auth.createUserWithEmailAndPassword(
+      final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // Save user data to Firestore
+      if (userCredential.user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .set({
+              'name': name,
+              'email': email,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+      }
 
       Navigator.pushReplacement(
         context,
