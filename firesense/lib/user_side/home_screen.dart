@@ -6,6 +6,7 @@ import 'package:firesense/user_side/add_contact_screen.dart';
 import 'contacts_list_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -15,10 +16,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final PageController _contactsPageController = PageController(
-    viewportFraction: 0.88,
-  );
-  int _currentContactsPage = 0;
   Future<List<DocumentSnapshot>>? _contactsFuture;
 
   @override
@@ -43,9 +40,77 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {});
   }
 
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    // Clean the phone number - remove all non-digit characters except +
+    String cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+
+    // If it starts with +63, keep it as is
+    // If it starts with 63, add +
+    // If it starts with 0, replace with +63
+    if (cleanNumber.startsWith('+63')) {
+      // Already in correct format
+    } else if (cleanNumber.startsWith('63')) {
+      cleanNumber = '+$cleanNumber';
+    } else if (cleanNumber.startsWith('0')) {
+      cleanNumber = '+63${cleanNumber.substring(1)}';
+    } else {
+      // For local numbers without country code, add +63
+      cleanNumber = '+63$cleanNumber';
+    }
+
+    final Uri phoneUri = Uri(scheme: 'tel', path: cleanNumber);
+
+    try {
+      print('Attempting to call: $phoneNumber');
+      print('Cleaned number: $cleanNumber');
+      print('URI: $phoneUri');
+
+      // Try multiple approaches for better emulator compatibility
+      try {
+        // First try: Direct launch with external application mode
+        await launchUrl(phoneUri, mode: LaunchMode.externalApplication);
+        print('Launch URL successful with external application mode');
+        return;
+      } catch (e1) {
+        print('External application mode failed: $e1');
+
+        // Second try: Platform default mode
+        try {
+          await launchUrl(phoneUri);
+          print('Launch URL successful with platform default mode');
+          return;
+        } catch (e2) {
+          print('Platform default mode failed: $e2');
+          throw e2;
+        }
+      }
+    } catch (e) {
+      print('All launch methods failed: $e');
+      // Fallback: show a dialog with the number
+      _showPhoneNumberDialog(cleanNumber);
+    }
+  }
+
+  void _showPhoneNumberDialog(String phoneNumber) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Phone Number'),
+          content: Text('Call: $phoneNumber'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
-    _contactsPageController.dispose();
     super.dispose();
   }
 
@@ -158,6 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+
               // Contacts Section Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -180,192 +246,114 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              // Contacts Slider (Firebase)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: SizedBox(
-                  height: 140,
-                  child: FutureBuilder<List<DocumentSnapshot>>(
-                    future: _contactsFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      final contacts = snapshot.data ?? [];
-                      if (contacts.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'No contacts yet.',
-                            style: TextStyle(color: Colors.black54),
-                          ),
-                        );
-                      }
-                      if (contacts.length == 1) {
-                        final contact = contacts.first;
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 8,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 26,
-                                backgroundColor: const Color(0xFFD9A7A7),
-                                child: const Icon(
-                                  Icons.person,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      contact['name'] ?? '',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      contact['phone'] ?? '',
-                                      style: const TextStyle(
-                                        color: Colors.black54,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.phone,
-                                  color: const Color(0xFF8B0000),
-                                ),
-                                onPressed: () {},
-                              ),
-                            ],
-                          ),
-                        );
-                      } else {
-                        return PageView.builder(
-                          controller: _contactsPageController,
-                          itemCount: contacts.length,
-                          onPageChanged: (index) {
-                            setState(() {
-                              _currentContactsPage = index;
-                            });
-                          },
-                          itemBuilder: (context, index) {
-                            final contact = contacts[index];
-                            return Padding(
-                              padding: EdgeInsets.only(
-                                left: index == 0 ? 0 : 8,
-                                right: index == contacts.length - 1 ? 0 : 8,
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 8,
-                                      offset: Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 26,
-                                      backgroundColor: const Color(0xFFD9A7A7),
-                                      child: const Icon(
-                                        Icons.person,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Text(
-                                            contact['name'] ?? '',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            contact['phone'] ?? '',
-                                            style: const TextStyle(
-                                              color: Colors.black54,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.phone,
-                                        color: const Color(0xFF8B0000),
-                                      ),
-                                      onPressed: () {},
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      }
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Dots indicator (dynamic)
+              // Contacts List (Firebase) - Limited to first 3
               FutureBuilder<List<DocumentSnapshot>>(
                 future: _contactsFuture,
                 builder: (context, snapshot) {
-                  final contacts = snapshot.data ?? [];
-                  if (contacts.length <= 1) {
-                    return const SizedBox.shrink();
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
                   }
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      contacts.length,
-                      (dotIndex) => Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color:
-                              dotIndex == _currentContactsPage
-                                  ? Colors.black87
-                                  : Colors.black26,
-                          shape: BoxShape.circle,
-                        ),
+                  final allContacts = snapshot.data ?? [];
+                  final contacts =
+                      allContacts.take(3).toList(); // Limit to first 3
+
+                  if (contacts.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No contacts yet.',
+                        style: TextStyle(color: Colors.black54),
                       ),
-                    ),
+                    );
+                  }
+
+                  return Column(
+                    children:
+                        contacts.map((contact) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: cardWhite,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 8,
+                                  offset: Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 30,
+                                  backgroundColor: const Color(0xFFD9A7A7),
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        contact['name'] ?? '',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        contact['phone'] ?? '',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                          fontSize: 13,
+                                          color: Color(0xFF8B0000),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Emergency Contact',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                ElevatedButton(
+                                  onPressed:
+                                      () => _makePhoneCall(
+                                        contact['phone'] ?? '',
+                                      ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primaryRed,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    minimumSize: const Size(0, 32),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text(
+                                    'Call',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
                   );
                 },
               ),
@@ -434,7 +422,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () => _makePhoneCall('(02) 8426-0246'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryRed,
                         foregroundColor: Colors.white,
@@ -455,6 +443,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               // Philippine National Police Card
               Container(
+                margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: cardWhite,
@@ -492,7 +481,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 2),
                           const Text(
-                            '(+63) 998 598 5134',
+                            '0998 598 5134',
                             style: TextStyle(
                               fontWeight: FontWeight.w500,
                               fontSize: 13,
@@ -511,7 +500,240 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () => _makePhoneCall('0998 598 5134'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryRed,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        minimumSize: const Size(0, 32),
+                        elevation: 0,
+                      ),
+                      child: const Text('Call', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+              ),
+              // Urdaneta District Hospital Card
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cardWhite,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/images/district.png',
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Urdaneta District Hospital',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            '0943 700 5740',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                              color: Color(0xFF8B0000),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Urdaneta City, Philippines',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _makePhoneCall('0943 700 5740'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryRed,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        minimumSize: const Size(0, 32),
+                        elevation: 0,
+                      ),
+                      child: const Text('Call', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+              ),
+              // Urdaneta Sacred Heart Hospital Card
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cardWhite,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/images/sacred.png',
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Urdaneta Sacred Heart Hospital',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            '(075) 203 1000',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                              color: Color(0xFF8B0000),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '24-hour Emergency Service',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _makePhoneCall('(075) 203 1000'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryRed,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        minimumSize: const Size(0, 32),
+                        elevation: 0,
+                      ),
+                      child: const Text('Call', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+              ),
+              // City Disaster Risk Reduction & Management Office Card
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cardWhite,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.asset(
+                        'assets/images/cdmo.png',
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'City DRRM Office',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            '0912 345 6789',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                              color: Color(0xFF8B0000),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Disaster Response & Management',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _makePhoneCall('0912 345 6789'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryRed,
                         foregroundColor: Colors.white,

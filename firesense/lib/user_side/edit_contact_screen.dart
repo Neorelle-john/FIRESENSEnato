@@ -42,8 +42,27 @@ class _EditContactScreenState extends State<EditContactScreen> {
     super.dispose();
   }
 
+  String _toTitleCase(String text) {
+    if (text.isEmpty) return text;
+
+    // Split by spaces to handle multiple words (like "Juan Carlos")
+    List<String> words = text.trim().split(' ');
+    List<String> titleCaseWords = [];
+
+    for (String word in words) {
+      if (word.isNotEmpty) {
+        // Capitalize first letter and make rest lowercase
+        String titleCaseWord =
+            word[0].toUpperCase() + word.substring(1).toLowerCase();
+        titleCaseWords.add(titleCaseWord);
+      }
+    }
+
+    return titleCaseWords.join(' ');
+  }
+
   Future<void> _updateContact() async {
-    final name = _nameController.text.trim();
+    final name = _toTitleCase(_nameController.text.trim());
     final phone = _phoneController.text.trim();
     if (name.isEmpty || phone.isEmpty) return;
 

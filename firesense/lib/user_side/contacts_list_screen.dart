@@ -87,7 +87,7 @@ class ContactsListScreen extends StatelessWidget {
                       ),
                     ),
                     title: Text(
-                      name,
+                      _toTitleCase(name),
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
@@ -174,6 +174,25 @@ class ContactsListScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+String _toTitleCase(String text) {
+  if (text.isEmpty) return text;
+
+  // Split by spaces to handle multiple words (like "Juan Carlos")
+  List<String> words = text.trim().split(' ');
+  List<String> titleCaseWords = [];
+
+  for (String word in words) {
+    if (word.isNotEmpty) {
+      // Capitalize first letter and make rest lowercase
+      String titleCaseWord =
+          word[0].toUpperCase() + word.substring(1).toLowerCase();
+      titleCaseWords.add(titleCaseWord);
+    }
+  }
+
+  return titleCaseWords.join(' ');
 }
 
 String _initialsFromName(String name) {

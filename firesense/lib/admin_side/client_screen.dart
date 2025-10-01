@@ -10,12 +10,60 @@ class AdminClientsScreen extends StatefulWidget {
 class _AdminClientsScreenState extends State<AdminClientsScreen> {
   final List<Map<String, dynamic>> clients = [
     {
-      'name': 'Client A',
-      'devices': ['Device 1', 'Device 2'],
+      'name': 'Urdaneta City Hall',
+      'devices': [
+        'FireSense Pro - Mayor\'s Office',
+        'FireSense Pro - Council Chamber',
+        'FireSense Pro - Records Section',
+        'FireSense Pro - Treasury Office',
+      ],
     },
     {
-      'name': 'Client B',
-      'devices': ['Device 3'],
+      'name': 'Urdaneta Central Market',
+      'devices': [
+        'FireSense Pro - Meat Section',
+        'FireSense Pro - Vegetable Area',
+        'FireSense Pro - Dry Goods Section',
+        'FireSense Pro - Food Court',
+      ],
+    },
+    {
+      'name': 'Pangasinan State University - Urdaneta',
+      'devices': [
+        'FireSense Pro - Main Library',
+        'FireSense Pro - Computer Laboratory',
+        'FireSense Pro - Science Laboratory',
+        'FireSense Pro - Cafeteria',
+        'FireSense Pro - Administration Building',
+      ],
+    },
+    {
+      'name': 'Urdaneta District Hospital',
+      'devices': [
+        'FireSense Pro - Emergency Room',
+        'FireSense Pro - Operating Room',
+        'FireSense Pro - ICU Ward',
+        'FireSense Pro - Pharmacy',
+        'FireSense Pro - Laboratory',
+        'FireSense Pro - Patient Wards',
+      ],
+    },
+    {
+      'name': 'CB Mall Urdaneta',
+      'devices': [
+        'FireSense Pro - Food Court',
+        'FireSense Pro - Department Store',
+        'FireSense Pro - Parking lot',
+      ],
+    },
+    {
+      'name': 'Urdaneta Public Market',
+      'devices': [
+        'FireSense Pro - Fish Section',
+        'FireSense Pro - Poultry Area',
+        'FireSense Pro - Rice Section',
+        'FireSense Pro - Spice Corner',
+      ],
     },
   ];
 

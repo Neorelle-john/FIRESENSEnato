@@ -5,15 +5,66 @@ import 'client_screen.dart';
 import 'alert_screen.dart';
 import 'settings.dart';
 
-// Dummy data for clients and their devices
+// Dummy data for clients and their devices - Urdaneta, Pangasinan
 final List<Map<String, dynamic>> dummyClients = [
   {
-    'name': 'Client A',
-    'devices': ['Device 1', 'Device 2'],
+    'name': 'Urdaneta City Hall',
+    'devices': [
+      'FireSense Pro - Mayor\'s Office',
+      'FireSense Pro - Council Chamber',
+      'FireSense Pro - Records Section',
+      'FireSense Pro - Treasury Office',
+    ],
   },
   {
-    'name': 'Client B',
-    'devices': ['Device 3'],
+    'name': 'Urdaneta Central Market',
+    'devices': [
+      'FireSense Pro - Meat Section',
+      'FireSense Pro - Vegetable Area',
+      'FireSense Pro - Dry Goods Section',
+      'FireSense Pro - Food Court',
+    ],
+  },
+  {
+    'name': 'Pangasinan State University - Urdaneta',
+    'devices': [
+      'FireSense Pro - Main Library',
+      'FireSense Pro - Computer Laboratory',
+      'FireSense Pro - Science Laboratory',
+      'FireSense Pro - Cafeteria',
+      'FireSense Pro - Administration Building',
+    ],
+  },
+  {
+    'name': 'Urdaneta District Hospital',
+    'devices': [
+      'FireSense Pro - Emergency Room',
+      'FireSense Pro - Operating Room',
+      'FireSense Pro - ICU Ward',
+      'FireSense Pro - Pharmacy',
+      'FireSense Pro - Laboratory',
+      'FireSense Pro - Patient Wards',
+    ],
+  },
+  {
+    'name': 'Robinsons Place Urdaneta',
+    'devices': [
+      'FireSense Pro - Food Court',
+      'FireSense Pro - Cinema 1',
+      'FireSense Pro - Cinema 2',
+      'FireSense Pro - Department Store',
+      'FireSense Pro - Parking Level 1',
+      'FireSense Pro - Parking Level 2',
+    ],
+  },
+  {
+    'name': 'Urdaneta Public Market',
+    'devices': [
+      'FireSense Pro - Fish Section',
+      'FireSense Pro - Poultry Area',
+      'FireSense Pro - Rice Section',
+      'FireSense Pro - Spice Corner',
+    ],
   },
 ];
 
@@ -322,59 +373,111 @@ class _AdminDashboard extends StatelessWidget {
         children: [
           const SizedBox(height: 16),
 
-          // Welcome Header Card
+          // Enhanced Map View Button - Primary Eye Catcher
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            margin: const EdgeInsets.only(bottom: 24),
             decoration: BoxDecoration(
-              color: primaryRed,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 10,
-                  offset: Offset(0, 6),
-                ),
-              ],
               gradient: const LinearGradient(
                 colors: [primaryRed, Color(0xFFB22222)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: primaryRed.withOpacity(0.4),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                  spreadRadius: 0,
+                ),
+                BoxShadow(
+                  color: primaryRed.withOpacity(0.2),
+                  blurRadius: 40,
+                  offset: const Offset(0, 16),
+                  spreadRadius: 0,
+                ),
+              ],
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'Admin Dashboard',
-                        style: TextStyle(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AdminMapScreen(),
+                    ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 24,
+                    horizontal: 32,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Animated icon container
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.map_outlined,
+                          size: 32,
                           color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      SizedBox(height: 6),
-                      Text(
-                        'Monitor and manage FireSense operations.',
-                        style: TextStyle(color: Colors.white70),
+                      const SizedBox(width: 16),
+                      // Enhanced text with subtitle
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'VIEW MAP',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Monitor Fire Sensors',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.white70,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      // Arrow indicator
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 16,
+                          color: Colors.white,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                const Icon(
-                  Icons.admin_panel_settings,
-                  color: Colors.white,
-                  size: 48,
-                ),
-              ],
+              ),
             ),
           ),
-
-          const SizedBox(height: 24),
 
           // Statistics Cards Row 1
           Row(
@@ -646,65 +749,6 @@ class _AdminDashboard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildActionCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF8B0000).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, color: const Color(0xFF8B0000), size: 24),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: Color(0xFF1E1E1E),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

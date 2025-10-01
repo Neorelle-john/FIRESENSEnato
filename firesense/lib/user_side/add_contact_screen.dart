@@ -15,44 +15,364 @@ class AddContactScreen extends StatefulWidget {
 }
 
 class _AddContactScreenState extends State<AddContactScreen> {
-  final _nameController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
   final _phoneController = TextEditingController();
   bool _loading = false;
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
 
+  String _cleanPhoneNumber(String phoneNumber) {
+    // Remove all non-digit characters except +
+    String cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
+
+    // If it starts with +63, keep it as is
+    // If it starts with 63, add +
+    // If it starts with 0, replace with +63
+    if (cleanNumber.startsWith('+63')) {
+      // Already in correct format
+    } else if (cleanNumber.startsWith('63')) {
+      cleanNumber = '+$cleanNumber';
+    } else if (cleanNumber.startsWith('0')) {
+      cleanNumber = '+63${cleanNumber.substring(1)}';
+    } else {
+      // For local numbers without country code, add +63
+      cleanNumber = '+63$cleanNumber';
+    }
+
+    return cleanNumber;
+  }
+
+  bool _isValidPhoneNumber(String phoneNumber) {
+    // Clean the phone number first
+    String cleanNumber = _cleanPhoneNumber(phoneNumber);
+
+    // Check if it's a valid Philippine mobile number
+    // Should be +63 followed by 10 digits (total 13 characters)
+    if (cleanNumber.length != 13) return false;
+
+    // Check if it starts with +63
+    if (!cleanNumber.startsWith('+63')) return false;
+
+    // Check if the next digit is 9 (Philippine mobile numbers start with 9)
+    if (cleanNumber.length >= 4 && cleanNumber[3] != '9') return false;
+
+    return true;
+  }
+
+  String _toTitleCase(String text) {
+    if (text.isEmpty) return text;
+
+    // Split by spaces to handle multiple words (like "Juan Carlos")
+    List<String> words = text.trim().split(' ');
+    List<String> titleCaseWords = [];
+
+    for (String word in words) {
+      if (word.isNotEmpty) {
+        // Capitalize first letter and make rest lowercase
+        String titleCaseWord =
+            word[0].toUpperCase() + word.substring(1).toLowerCase();
+        titleCaseWords.add(titleCaseWord);
+      }
+    }
+
+    return titleCaseWords.join(' ');
+  }
+
   Future<void> _addContact() async {
-    final name = _nameController.text.trim();
+    if (!_formKey.currentState!.validate()) return;
+
+    final firstName = _toTitleCase(_firstNameController.text.trim());
+    final lastName = _toTitleCase(_lastNameController.text.trim());
     final phone = _phoneController.text.trim();
-    if (name.isEmpty || phone.isEmpty) return;
+
+    // Combine first and last name
+    final fullName = lastName.isEmpty ? firstName : '$firstName $lastName';
 
     setState(() => _loading = true);
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       setState(() => _loading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Not logged in.')));
+      _showErrorDialog('Not logged in.');
       return;
     }
 
-    final contactsRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .collection('contacts');
+    try {
+      final contactsRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('contacts');
 
-    await contactsRef.add({'name': name, 'phone': phone});
-    setState(() => _loading = false);
+      // Clean the phone number before saving
+      final cleanPhone = _cleanPhoneNumber(phone);
 
-    widget.onContactsChanged?.call(); // Notify contacts list to update
+      // Check if phone number already exists
+      final existingContacts =
+          await contactsRef.where('phone', isEqualTo: cleanPhone).get();
 
-    Navigator.pop(context); // Go back to contacts list
+      if (existingContacts.docs.isNotEmpty) {
+        setState(() => _loading = false);
+        final existingContact = existingContacts.docs.first.data();
+        final existingName = existingContact['name'] ?? 'Unknown Contact';
+        _showErrorDialog(
+          'This phone number is already saved to "$existingName". Please use a different number.',
+        );
+        return;
+      }
+
+      await contactsRef.add({
+        'name': fullName,
+        'firstName': firstName,
+        'lastName': lastName,
+        'phone': cleanPhone,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      setState(() => _loading = false);
+
+      _showSuccessDialog('Contact added successfully!');
+    } catch (e) {
+      setState(() => _loading = false);
+      _showErrorDialog('Failed to add contact. Please try again.');
+    }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            contentPadding: EdgeInsets.zero,
+            backgroundColor: Colors.transparent,
+            content: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with icon and close button
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 12, 0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.error_outline,
+                            color: Colors.red.shade600,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Error',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              color: Color(0xFF1E1E1E),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.grey),
+                          onPressed: () => Navigator.pop(context),
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Message content
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF1E1E1E),
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+
+                  // Button
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8B0000),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'OK',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
+  void _showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            contentPadding: EdgeInsets.zero,
+            backgroundColor: Colors.transparent,
+            content: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with icon and close button
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 12, 0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.check_circle_outline,
+                            color: Colors.green.shade600,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Success!',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              color: Color(0xFF1E1E1E),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.grey),
+                          onPressed: () {
+                            Navigator.pop(context); // Close the dialog
+                            widget.onContactsChanged
+                                ?.call(); // Notify contacts list to update
+                            Navigator.pop(context); // Go back to contacts list
+                          },
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Message content
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Color(0xFF1E1E1E),
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+
+                  // Button
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context); // Close the dialog
+                          widget.onContactsChanged
+                              ?.call(); // Notify contacts list to update
+                          Navigator.pop(context); // Go back to contacts list
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Continue',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
   }
 
   @override
@@ -157,46 +477,101 @@ class _AddContactScreenState extends State<AddContactScreen> {
                       horizontal: 16,
                       vertical: 18,
                     ),
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _nameController,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Full Name',
-                            hintText: 'e.g. Juan Dela Cruz',
-                            prefixIcon: const Icon(Icons.badge_outlined),
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: border,
-                            enabledBorder: border,
-                            focusedBorder: border,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 18,
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _firstNameController,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: 'First Name *',
+                              hintText: 'e.g. Juan',
+                              prefixIcon: const Icon(Icons.badge_outlined),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: border,
+                              enabledBorder: border,
+                              focusedBorder: border,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 18,
+                              ),
                             ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'First name is required';
+                              }
+                              if (value.trim().length < 2) {
+                                return 'First name must be at least 2 characters';
+                              }
+                              return null;
+                            },
                           ),
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: _phoneController,
-                          decoration: InputDecoration(
-                            labelText: 'Phone Number',
-                            hintText: 'e.g. 09xxxxxxxxx',
-                            prefixIcon: const Icon(Icons.phone_outlined),
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: border,
-                            enabledBorder: border,
-                            focusedBorder: border,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 18,
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            controller: _lastNameController,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: 'Last Name (Optional)',
+                              hintText: 'e.g. Dela Cruz',
+                              prefixIcon: const Icon(Icons.badge_outlined),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: border,
+                              enabledBorder: border,
+                              focusedBorder: border,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 18,
+                              ),
                             ),
+                            validator: (value) {
+                              if (value != null &&
+                                  value.trim().isNotEmpty &&
+                                  value.trim().length < 2) {
+                                return 'Last name must be at least 2 characters';
+                              }
+                              return null;
+                            },
                           ),
-                          keyboardType: TextInputType.phone,
-                        ),
-                      ],
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            controller: _phoneController,
+                            textInputAction: TextInputAction.done,
+                            decoration: InputDecoration(
+                              labelText: 'Phone Number *',
+                              hintText: 'e.g. 09xxxxxxxxx or +63 9xx xxx xxxx',
+                              prefixIcon: const Icon(Icons.phone_outlined),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: border,
+                              enabledBorder: border,
+                              focusedBorder: border,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 18,
+                              ),
+                              helperText:
+                                  'Must be 11 digits (09xxxxxxxxx) or 13 digits (+63xxxxxxxxxx)',
+                              helperStyle: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 12,
+                              ),
+                            ),
+                            keyboardType: TextInputType.phone,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Phone number is required';
+                              }
+                              if (!_isValidPhoneNumber(value)) {
+                                return 'Please enter a valid Philippine mobile number (09xxxxxxxxx or +63xxxxxxxxxx)';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
