@@ -39,80 +39,38 @@ class _MaterialScreenState extends State<MaterialScreen> {
         ),
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    primaryRed.withOpacity(0.1),
-                    primaryRed.withOpacity(0.05),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(Icons.menu_book, color: primaryRed, size: 20),
-            ),
-            const SizedBox(width: 12),
             const Text(
               'Materials',
               style: TextStyle(
                 color: Color(0xFF8B0000),
                 fontWeight: FontWeight.bold,
-                fontSize: 20,
+                fontSize: 22,
               ),
             ),
           ],
         ),
         actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+          IconButton(
+            icon: Icon(Icons.people, color: Colors.black87),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ContactsListScreen(),
                 ),
-              ],
-            ),
-            child: IconButton(
-              icon: Icon(Icons.people, color: primaryRed),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ContactsListScreen(),
-                  ),
-                );
-              },
-            ),
+              );
+            },
           ),
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+          IconButton(
+            icon: Icon(Icons.person_add, color: Colors.black87),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddContactScreen(),
                 ),
-              ],
-            ),
-            child: IconButton(
-              icon: Icon(Icons.person_add, color: primaryRed),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddContactScreen(),
-                  ),
-                );
-              },
-            ),
+              );
+            },
           ),
         ],
         automaticallyImplyLeading: false,
