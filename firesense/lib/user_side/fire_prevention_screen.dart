@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firesense/user_side/emergency_dial_screen.dart';
+import 'package:firesense/user_side/material_screen.dart';
+import 'package:firesense/user_side/settings_screen.dart';
+import 'package:firesense/user_side/home_screen.dart';
 
 class FirePreventionScreen extends StatefulWidget {
   const FirePreventionScreen({Key? key}) : super(key: key);
@@ -46,62 +50,36 @@ class _FirePreventionScreenState extends State<FirePreventionScreen> {
             children: [
               const SizedBox(height: 16),
 
-              // Enhanced Header Card
+              // Professional Header Card
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      const Color(0xFF8B0000).withOpacity(0.05),
-                      const Color(0xFF8B0000).withOpacity(0.02),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: const Color(0xFF8B0000).withOpacity(0.1),
-                    width: 1,
-                  ),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF8B0000).withOpacity(0.08),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.all(28),
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                const Color(0xFF8B0000).withOpacity(0.15),
-                                const Color(0xFF8B0000).withOpacity(0.08),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: const Color(0xFF8B0000).withOpacity(0.2),
-                              width: 1,
-                            ),
+                            color: const Color(0xFF8B0000).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Text(
-                            '🔥',
-                            style: TextStyle(fontSize: 32),
+                          child: const Icon(
+                            Icons.local_fire_department,
+                            color: Color(0xFF8B0000),
+                            size: 28,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -109,34 +87,21 @@ class _FirePreventionScreenState extends State<FirePreventionScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFF8B0000,
-                                  ).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Text(
-                                  'SAFETY GUIDE',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF8B0000),
-                                    letterSpacing: 1.2,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
                               const Text(
-                                'Fire Prevention',
+                                'Fire Prevention Guide',
                                 style: TextStyle(
-                                  fontSize: 24,
+                                  fontSize: 22,
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF1E1E1E),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Professional safety measures for property owners',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
@@ -148,41 +113,30 @@ class _FirePreventionScreenState extends State<FirePreventionScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.7),
+                        color: const Color(0xFF8B0000).withOpacity(0.05),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Colors.grey.shade200,
+                          color: const Color(0xFF8B0000).withOpacity(0.1),
                           width: 1,
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                color: const Color(0xFF8B0000),
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'What You Need to Know',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1E1E1E),
-                                ),
-                              ),
-                            ],
+                          Icon(
+                            Icons.security,
+                            color: const Color(0xFF8B0000),
+                            size: 20,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Essential tips and measures to keep you and your property safe from fire hazards.',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: Colors.grey.shade700,
-                              height: 1.5,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Comprehensive fire safety protocols for residential and commercial properties',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade700,
+                                height: 1.4,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
@@ -194,119 +148,189 @@ class _FirePreventionScreenState extends State<FirePreventionScreen> {
 
               const SizedBox(height: 24),
 
-              // Why Fire Prevention Matters
+              // Fire Prevention Fundamentals
               _buildExpandableSection(
                 key: 'why_matters',
-                title: '1. Why Fire Prevention Matters',
-                summary:
-                    'Understanding the importance of fire prevention and early detection',
+                title: 'Fire Prevention Fundamentals',
+                summary: 'Understanding fire risks and prevention strategies',
                 content: [
-                  'Fires spread fast. Early detection and good habits can save lives and property.',
+                  'Fire incidents can cause significant property damage and loss of life. Early detection and proper prevention measures are essential for property protection.',
                   '',
-                  'Many residential fires start from everyday sources like cooking, heating devices, and electrical faults.',
+                  'Most fires originate from common sources: cooking equipment, electrical systems, heating devices, and improper storage of flammable materials.',
                   '',
-                  'According to the US Fire Administration, smoke alarms, fire-safe behavior, and community risk reduction play key roles in preventing home fires.',
+                  'Implementing comprehensive fire safety protocols reduces risk and ensures compliance with local fire codes and insurance requirements.',
                 ],
-                icon: Icons.info_outline,
-                iconColor: Colors.blue,
+                icon: Icons.analytics_outlined,
+                iconColor: const Color(0xFF8B0000),
               ),
 
               const SizedBox(height: 16),
 
-              // At Home Prevention Measures
+              // Residential Property Safety
               _buildExpandableSection(
                 key: 'at_home',
-                title: ' At Home: Key Prevention Measures',
-                summary: 'Essential fire safety tips for your home and family',
+                title: 'Residential Property Safety',
+                summary: 'Essential fire safety measures for home owners',
                 content: [
-                  'A. Smoke Alarms & Early Detection',
-                  '• Install smoke alarms on every level, inside every bedroom, and outside sleeping areas.',
-                  '• Test alarms monthly and replace batteries at least once a year.',
-                  '• Replace your smoke alarm if it\'s more than 10 years old.',
+                  'Smoke Detection Systems',
+                  '• Install interconnected smoke alarms on every level and in all bedrooms',
+                  '• Test monthly and replace batteries annually',
+                  '• Replace smoke alarms every 10 years or as recommended by manufacturer',
                   '',
-                  'B. Kitchen & Cooking Safety',
-                  '• Never leave cooking food unattended.',
-                  '• Keep flammable items (cloths, paper, curtains) away from stove, ovens, and heat sources.',
-                  '• Clean grease and oil buildup from cooking surfaces. Grease fires are dangerous.',
-                  '• If a grease fire starts, cover the pan with a lid and turn off heat (don\'t use water).',
+                  'Kitchen Safety Protocols',
+                  '• Never leave cooking unattended',
+                  '• Maintain 3-foot clearance from heat sources',
+                  '• Clean grease buildup regularly to prevent fire hazards',
+                  '• Keep fire extinguisher accessible in kitchen area',
                   '',
-                  'C. Electrical & Appliance Safety',
-                  '• Inspect cords and plugs: replace cracked, frayed, or damaged ones.',
-                  '• Avoid overloading outlets or power strips.',
-                  '• Keep cords out of walkways and off walls to prevent wear.',
+                  'Electrical System Maintenance',
+                  '• Inspect electrical cords and replace damaged ones immediately',
+                  '• Avoid overloading circuits and power strips',
+                  '• Schedule annual electrical system inspection by licensed electrician',
                   '',
-                  'D. Heating, Fireplaces & Space Heaters',
-                  '• Keep at least 3 feet (≈1 meter) distance between heaters/fireplaces and flammable objects.',
-                  '• Have chimneys, vents, and heating systems inspected and cleaned annually.',
-                  '• Use screens or guards in fireplaces to contain sparks.',
+                  'Heating System Safety',
+                  '• Maintain 3-foot clearance around heating equipment',
+                  '• Schedule annual inspection and cleaning of heating systems',
+                  '• Use fireplace screens and ensure proper ventilation',
                   '',
-                  'E. Safe Storage & Housekeeping',
-                  '• Store flammable liquids (gasoline, solvents) in approved containers, away from living spaces.',
-                  '• Keep clutter, trash, and combustible materials away from exits and heaters.',
-                  '• Clear roofs, gutters, and surroundings of leaves and debris to reduce fire risk.',
+                  'Property Maintenance',
+                  '• Store flammable materials in approved containers away from living areas',
+                  '• Maintain clear evacuation routes and exits',
+                  '• Keep gutters and roof areas clear of debris',
                 ],
-                icon: Icons.home_outlined,
-                iconColor: Colors.green,
+                icon: Icons.home_work_outlined,
+                iconColor: const Color(0xFF8B0000),
               ),
 
               const SizedBox(height: 16),
 
-              // Buildings & Workplaces
+              // Commercial Building Safety
               _buildExpandableSection(
                 key: 'workplace',
-                title: ' In Buildings & Workplaces',
-                summary:
-                    'Fire safety measures for commercial and public buildings',
+                title: 'Commercial Building Safety',
+                summary: 'Fire safety compliance for business establishments',
                 content: [
-                  '• Ensure clear, unobstructed exits and marked evacuation routes.',
-                  '• Maintain fire alarms, sprinklers, extinguishers, and emergency lighting.',
-                  '• Train occupants/employees on fire prevention, proper use of fire extinguishers, and evacuation.',
-                  '• Conduct regular fire drills to ensure readiness.',
-                  '• Perform periodic inspections and maintenance of all fire safety systems.',
+                  '• Maintain clear, marked evacuation routes and emergency exits',
+                  '• Install and maintain fire suppression systems (sprinklers, alarms, extinguishers)',
+                  '• Conduct regular fire safety training for all employees',
+                  '• Schedule quarterly fire drills and document compliance',
+                  '• Perform annual inspection and maintenance of all fire safety equipment',
+                  '• Ensure emergency lighting systems are functional',
+                  '• Maintain fire department access and clear building perimeters',
                 ],
-                icon: Icons.business_outlined,
-                iconColor: Colors.orange,
+                icon: Icons.business_center_outlined,
+                iconColor: const Color(0xFF8B0000),
               ),
 
               const SizedBox(height: 16),
 
-              // Wildfire & Outdoor Fire Prevention
+              // Outdoor Fire Prevention
               _buildExpandableSection(
                 key: 'wildfire',
-                title: ' Wildfire & Outdoor Fire Prevention',
-                summary: 'Protecting against outdoor fires and wildfires',
+                title: 'Outdoor Fire Prevention',
+                summary: 'Protecting properties from external fire threats',
                 content: [
-                  '• Avoid open flames or burning during dry, windy periods.',
-                  '• Build campfires in safe, cleared areas; extinguish completely before leaving.',
-                  '• Maintain defensible space around buildings by clearing vegetation, trimming trees, and using fire-resistant materials.',
-                  '• Use fire-resistant roofing, siding, vents, and screens to reduce ember infiltration.',
+                  '• Maintain defensible space around buildings (minimum 30 feet)',
+                  '• Use fire-resistant building materials for roofing and siding',
+                  '• Clear vegetation and debris from building perimeters',
+                  '• Install ember-resistant vents and screens',
+                  '• Avoid outdoor burning during high-risk weather conditions',
+                  '• Ensure adequate water supply for fire suppression',
                 ],
-                icon: Icons.park_outlined,
-                iconColor: Colors.brown,
+                icon: Icons.landscape_outlined,
+                iconColor: const Color(0xFF8B0000),
               ),
 
               const SizedBox(height: 16),
 
-              // Emergency Response
+              // Emergency Response Procedures
               _buildExpandableSection(
                 key: 'emergency',
-                title: ' What To Do If Fire Breaks Out: Basic Response Steps',
-                summary: 'Critical steps to take when a fire occurs',
+                title: 'Emergency Response Procedures',
+                summary: 'Critical actions during fire incidents',
                 content: [
-                  '• Alert & evacuate — Leave immediately via your escape plan.',
-                  '• Close doors behind you — helps slow fire spread.',
-                  '• Stay low & crawl under smoke — air is cleaner near the floor.',
-                  '• Stop, Drop, & Roll — if your clothes catch fire.',
-                  '• Once safe, call emergency services.',
-                  '• Don\'t re-enter until authorities say it\'s safe.',
+                  '• Activate fire alarm and alert all occupants immediately',
+                  '• Evacuate using designated escape routes',
+                  '• Close doors behind you to slow fire spread',
+                  '• Stay low to avoid smoke inhalation',
+                  '• Call emergency services from safe location',
+                  '• Do not re-enter building until cleared by fire department',
+                  '• Account for all occupants at designated meeting point',
                 ],
                 icon: Icons.emergency_outlined,
-                iconColor: Colors.red,
+                iconColor: const Color(0xFF8B0000),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 100), // Extra space for bottom navigation
             ],
           ),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedItemColor: const Color(0xFF8B0000),
+          unselectedItemColor: Colors.black54,
+          showSelectedLabels: true,
+          showUnselectedLabels: true,
+          currentIndex: 1,
+          onTap: (index) {
+            if (index == 0) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+              );
+            } else if (index == 1) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const MaterialScreen()),
+              );
+            } else if (index == 2) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EmergencyDialScreen(),
+                ),
+              );
+            } else if (index == 3) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            }
+          },
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.menu_book),
+              label: 'Materials',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.phone_in_talk),
+              label: 'Emergency Dial',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
+          ],
         ),
       ),
     );
@@ -327,42 +351,24 @@ class _FirePreventionScreenState extends State<FirePreventionScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient:
-            isExpanded
-                ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    iconColor.withOpacity(0.03),
-                    iconColor.withOpacity(0.01),
-                  ],
-                )
-                : null,
-        color: isExpanded ? null : cardWhite,
-        borderRadius: BorderRadius.circular(20),
+        color: cardWhite,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color:
-                isExpanded
-                    ? iconColor.withOpacity(0.15)
-                    : Colors.black.withOpacity(0.08),
-            blurRadius: isExpanded ? 16 : 12,
-            offset: const Offset(0, 6),
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 4,
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
         border: Border.all(
-          color: isExpanded ? iconColor.withOpacity(0.4) : Colors.grey.shade200,
-          width: isExpanded ? 2 : 1,
+          color:
+              isExpanded ? primaryRed.withOpacity(0.2) : Colors.grey.shade200,
+          width: 1,
         ),
       ),
       child: Column(
         children: [
-          // Enhanced Header (Always visible)
+          // Professional Header
           Material(
             color: Colors.transparent,
             child: InkWell(
@@ -371,105 +377,53 @@ class _FirePreventionScreenState extends State<FirePreventionScreen> {
                   _expandedSections[key] = !isExpanded;
                 });
               },
-              borderRadius: BorderRadius.circular(20),
-              splashColor: iconColor.withOpacity(0.1),
-              highlightColor: iconColor.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(20),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            iconColor.withOpacity(0.2),
-                            iconColor.withOpacity(0.1),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: iconColor.withOpacity(0.3),
-                          width: 1,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: iconColor.withOpacity(0.1),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        color: primaryRed.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(icon, color: iconColor, size: 26),
+                      child: Icon(icon, color: primaryRed, size: 24),
                     ),
-                    const SizedBox(width: 20),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             title,
-                            style: TextStyle(
-                              fontSize: 19,
+                            style: const TextStyle(
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color:
-                                  isExpanded
-                                      ? iconColor
-                                      : const Color(0xFF1E1E1E),
+                              color: Color(0xFF1E1E1E),
                             ),
                           ),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: iconColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              summary,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: iconColor.withOpacity(0.8),
-                                height: 1.3,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          const SizedBox(height: 4),
+                          Text(
+                            summary,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                              height: 1.3,
                             ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            primaryRed.withOpacity(0.15),
-                            primaryRed.withOpacity(0.08),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: primaryRed.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: AnimatedRotation(
-                        turns: isExpanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        child: Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: primaryRed,
-                          size: 22,
-                        ),
+                    AnimatedRotation(
+                      turns: isExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: primaryRed,
+                        size: 24,
                       ),
                     ),
                   ],
@@ -478,9 +432,9 @@ class _FirePreventionScreenState extends State<FirePreventionScreen> {
             ),
           ),
 
-          // Enhanced Expandable Content
+          // Professional Content
           AnimatedContainer(
-            duration: const Duration(milliseconds: 400),
+            duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
             height: isExpanded ? null : 0,
             child:
@@ -488,188 +442,94 @@ class _FirePreventionScreenState extends State<FirePreventionScreen> {
                     ? Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white.withOpacity(0.8),
-                            Colors.grey.shade50.withOpacity(0.9),
-                          ],
-                        ),
+                        color: Colors.grey.shade50,
                         borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(20),
-                          bottomRight: Radius.circular(20),
+                          bottomLeft: Radius.circular(16),
+                          bottomRight: Radius.circular(16),
                         ),
                         border: Border(
                           top: BorderSide(
-                            color: iconColor.withOpacity(0.2),
+                            color: Colors.grey.shade200,
                             width: 1,
                           ),
                         ),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              height: 2,
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    iconColor.withOpacity(0.3),
-                                    iconColor.withOpacity(0.1),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                              margin: const EdgeInsets.only(bottom: 20),
-                            ),
+                            const SizedBox(height: 16),
                             ...content.map((line) {
                               if (line.isEmpty) {
-                                return const SizedBox(height: 16);
+                                return const SizedBox(height: 12);
                               }
 
-                              // Enhanced bullet formatting
+                              // Professional bullet points
                               if (line.startsWith('•')) {
                                 return Container(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.6),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: iconColor.withOpacity(0.1),
-                                      width: 1,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: iconColor.withOpacity(0.05),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
+                                  margin: const EdgeInsets.only(bottom: 8),
                                   child: Row(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
                                     children: [
                                       Container(
                                         margin: const EdgeInsets.only(
-                                          top: 2,
-                                          right: 16,
+                                          top: 6,
+                                          right: 12,
                                         ),
-                                        padding: const EdgeInsets.all(6),
+                                        width: 6,
+                                        height: 6,
                                         decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              iconColor.withOpacity(0.2),
-                                              iconColor.withOpacity(0.1),
-                                            ],
-                                          ),
+                                          color: primaryRed,
                                           borderRadius: BorderRadius.circular(
-                                            8,
+                                            3,
                                           ),
-                                        ),
-                                        child: Icon(
-                                          Icons.check_circle_outline,
-                                          color: iconColor,
-                                          size: 16,
                                         ),
                                       ),
                                       Expanded(
                                         child: Text(
                                           line.substring(1).trim(),
                                           style: const TextStyle(
-                                            fontSize: 15,
+                                            fontSize: 14,
                                             color: Color(0xFF1E1E1E),
-                                            height: 1.6,
-                                            fontWeight: FontWeight.w500,
+                                            height: 1.5,
                                           ),
                                         ),
                                       ),
                                     ],
                                   ),
                                 );
-                              } else if (line.contains('A.') ||
-                                  line.contains('B.') ||
-                                  line.contains('C.') ||
-                                  line.contains('D.') ||
-                                  line.contains('E.')) {
-                                // Enhanced section headers
+                              } else if (line.contains('Systems') ||
+                                  line.contains('Protocols') ||
+                                  line.contains('Maintenance') ||
+                                  line.contains('Safety')) {
+                                // Section headers
                                 return Container(
                                   margin: const EdgeInsets.only(
-                                    bottom: 12,
+                                    bottom: 8,
                                     top: 16,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        iconColor.withOpacity(0.1),
-                                        iconColor.withOpacity(0.05),
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: iconColor.withOpacity(0.2),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(6),
-                                        decoration: BoxDecoration(
-                                          color: iconColor.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                        child: Icon(
-                                          Icons.label_important_outline,
-                                          color: iconColor,
-                                          size: 16,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          line,
-                                          style: TextStyle(
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.bold,
-                                            color: iconColor,
-                                            height: 1.4,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              } else {
-                                // Enhanced regular text
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.4),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: Colors.grey.shade200,
-                                      width: 1,
-                                    ),
                                   ),
                                   child: Text(
                                     line,
                                     style: TextStyle(
-                                      fontSize: 15,
-                                      color: Colors.grey.shade800,
-                                      height: 1.6,
-                                      fontWeight: FontWeight.w400,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryRed,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                // Regular text
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: Text(
+                                    line,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade700,
+                                      height: 1.5,
                                     ),
                                   ),
                                 );

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:firesense/user_side/emergency_dial_screen.dart';
 import 'package:firesense/user_side/home_screen.dart';
 import 'package:firesense/user_side/fire_prevention_screen.dart';
+import 'package:firesense/user_side/fire_checklist_screen.dart';
 
 class MaterialScreen extends StatefulWidget {
   const MaterialScreen({Key? key}) : super(key: key);
@@ -80,78 +81,45 @@ class _MaterialScreenState extends State<MaterialScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
-
             // Enhanced Categories Header
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    primaryRed.withOpacity(0.05),
-                    primaryRed.withOpacity(0.02),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Categories',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E1E1E),
+                      ),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: primaryRed.withOpacity(0.1),
-                  width: 1,
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildCategoryButton(
+                        title: 'News and Articles',
+                        icon: Icons.article_outlined,
+                        isSelected: selectedCategory == 0,
+                        onTap: () => setState(() => selectedCategory = 0),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildCategoryButton(
+                        title: 'Secondary Resources',
+                        icon: Icons.library_books_outlined,
+                        isSelected: selectedCategory == 1,
+                        onTap: () => setState(() => selectedCategory = 1),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: primaryRed.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.category,
-                          color: primaryRed,
-                          size: 18,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Content Categories',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1E1E1E),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildCategoryButton(
-                          title: 'News and Articles',
-                          icon: Icons.article_outlined,
-                          isSelected: selectedCategory == 0,
-                          onTap: () => setState(() => selectedCategory = 0),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildCategoryButton(
-                          title: 'Secondary Resources',
-                          icon: Icons.library_books_outlined,
-                          isSelected: selectedCategory == 1,
-                          onTap: () => setState(() => selectedCategory = 1),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+              ],
             ),
             const SizedBox(height: 20),
             if (selectedCategory == 0) ...[
@@ -205,7 +173,15 @@ class _MaterialScreenState extends State<MaterialScreen> {
                 title: 'Fire Safety Checklist',
                 description: 'A comprehensive guide to check for your safety',
                 category: 'Checklist',
-                isInteractive: false,
+                isInteractive: true,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const FireChecklistScreen(),
+                    ),
+                  );
+                },
                 icon: Icons.checklist,
                 color: Colors.orange,
               ),
