@@ -1,10 +1,11 @@
-import 'package:firesense/user_side/contacts_list_screen.dart';
+import 'package:firesense/user_side/contacts/contacts_list_screen.dart';
+import 'package:firesense/user_side/devices/devices_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firesense/user_side/home_screen.dart';
-import 'package:firesense/user_side/material_screen.dart';
-import 'package:firesense/user_side/emergency_dial_screen.dart';
-import 'package:firesense/user_side/profile_screen.dart';
-import 'package:firesense/user_side/message_template_screen.dart';
+import 'package:firesense/user_side/home/home_screen.dart';
+import 'package:firesense/user_side/materials/material_screen.dart';
+import 'package:firesense/user_side/emergency/emergency_dial_screen.dart';
+import 'package:firesense/user_side/settings/profile_screen.dart';
+import 'package:firesense/user_side/settings/message_template_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firesense/credentials/signin_screen.dart';
 
@@ -172,8 +173,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               settingsTile(
                 title: 'Connected Devices',
                 icon: Icons.devices_other,
-                subtitle: 'View and manage connected sensors',
-                onTap: () {},
+                subtitle: 'View and manage connected devices',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DevicesScreen(),
+                    ),
+                  );
+                },
               ),
               settingsTile(
                 title: 'Test Alarm',
@@ -316,7 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           unselectedItemColor: Colors.black54,
           showSelectedLabels: true,
           showUnselectedLabels: true,
-          currentIndex: 3,
+          currentIndex: 4,
           onTap: (index) {
             if (index == 0) {
               Navigator.pushReplacement(
@@ -328,15 +336,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context,
                 MaterialPageRoute(builder: (context) => const MaterialScreen()),
               );
-            } else if (index == 2) {
+            } else if (index == 3) {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const EmergencyDialScreen(),
                 ),
               );
-            } else if (index == 3) {
-              // Already on Settings
+            } else if (index == 4) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
             }
           },
           items: const [
@@ -344,6 +355,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.menu_book),
               label: 'Materials',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.sensors),
+              label: 'Devices',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.phone_in_talk),

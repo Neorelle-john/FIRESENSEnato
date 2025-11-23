@@ -58,5 +58,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '723846595023',
     projectId: 'firesense-91cda',
     storageBucket: 'firesense-91cda.firebasestorage.app',
+    databaseURL:
+        "https://firesense-91cda-default-rtdb.asia-southeast1.firebasedatabase.app",
   );
 }

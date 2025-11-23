@@ -1,9 +1,10 @@
-import 'package:firesense/user_side/material_screen.dart';
-import 'package:firesense/user_side/emergency_dial_screen.dart';
-import 'package:firesense/user_side/settings_screen.dart';
+import 'package:firesense/user_side/devices/devices_screen.dart';
+import 'package:firesense/user_side/materials/material_screen.dart';
+import 'package:firesense/user_side/emergency/emergency_dial_screen.dart';
+import 'package:firesense/user_side/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firesense/user_side/add_contact_screen.dart';
-import 'contacts_list_screen.dart';
+import 'package:firesense/user_side/contacts/add_contact_screen.dart';
+import '../contacts/contacts_list_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -787,6 +788,13 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.menu_book),
               label: 'Materials',
             ),
+
+            // 👉 NEW DEVICE TAB
+            BottomNavigationBarItem(
+              icon: Icon(Icons.sensors),
+              label: 'Devices',
+            ),
+
             BottomNavigationBarItem(
               icon: Icon(Icons.phone_in_talk),
               label: 'Emergency Dial',
@@ -806,17 +814,21 @@ class _HomeScreenState extends State<HomeScreen> {
             } else if (index == 2) {
               Navigator.pushReplacement(
                 context,
+                MaterialPageRoute(builder: (context) => const DevicesScreen()),
+              );
+            } else if (index == 3) {
+              Navigator.pushReplacement(
+                context,
                 MaterialPageRoute(
                   builder: (context) => const EmergencyDialScreen(),
                 ),
               );
-            } else if (index == 3) {
+            } else if (index == 4) {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
               );
             }
-            // You can add navigation for other tabs as needed
           },
         ),
       ),

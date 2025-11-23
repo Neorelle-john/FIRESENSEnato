@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:firesense/user_side/emergency_dial_screen.dart';
-import 'package:firesense/user_side/material_screen.dart';
-import 'package:firesense/user_side/settings_screen.dart';
-import 'package:firesense/user_side/home_screen.dart';
+import 'package:firesense/user_side/emergency/emergency_dial_screen.dart';
+import 'package:firesense/user_side/materials/material_screen.dart';
+import 'package:firesense/user_side/settings/settings_screen.dart';
+import 'package:firesense/user_side/home/home_screen.dart';
 
 class FirePreventionScreen extends StatefulWidget {
   const FirePreventionScreen({Key? key}) : super(key: key);

@@ -1,9 +1,10 @@
-import 'package:firesense/user_side/add_contact_screen.dart';
-import 'package:firesense/user_side/contacts_list_screen.dart';
-import 'package:firesense/user_side/home_screen.dart';
-import 'package:firesense/user_side/settings_screen.dart';
+import 'package:firesense/user_side/contacts/add_contact_screen.dart';
+import 'package:firesense/user_side/contacts/contacts_list_screen.dart';
+import 'package:firesense/user_side/devices/devices_screen.dart';
+import 'package:firesense/user_side/home/home_screen.dart';
+import 'package:firesense/user_side/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firesense/user_side/material_screen.dart';
+import 'package:firesense/user_side/materials/material_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class EmergencyDialScreen extends StatelessWidget {
@@ -528,21 +529,32 @@ class EmergencyDialScreen extends StatelessWidget {
           unselectedItemColor: Colors.black54,
           showSelectedLabels: true,
           showUnselectedLabels: true,
-          currentIndex: 2,
+          currentIndex: 3,
           onTap: (index) {
             if (index == 0) {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => const HomeScreen()),
               );
-            } else if (index == 1) {
+            }
+            else if (index == 1) {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => const MaterialScreen()),
               );
             } else if (index == 2) {
-              // Already on Emergency Dial
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const DevicesScreen()),
+              );
             } else if (index == 3) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EmergencyDialScreen(),
+                ),
+              );
+            } else if (index == 4) {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
@@ -554,6 +566,10 @@ class EmergencyDialScreen extends StatelessWidget {
             BottomNavigationBarItem(
               icon: Icon(Icons.menu_book),
               label: 'Materials',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.sensors),
+              label: 'Devices',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.phone_in_talk),

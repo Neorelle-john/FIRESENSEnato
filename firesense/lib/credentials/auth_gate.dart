@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firesense/admin_side/home_screen.dart';
-import 'package:firesense/user_side/home_screen.dart';
+import 'package:firesense/user_side/home/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'signin_screen.dart';
 

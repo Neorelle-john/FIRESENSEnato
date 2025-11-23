@@ -1,11 +1,12 @@
-import 'package:firesense/user_side/add_contact_screen.dart';
-import 'package:firesense/user_side/contacts_list_screen.dart';
-import 'package:firesense/user_side/settings_screen.dart';
+import 'package:firesense/user_side/contacts/add_contact_screen.dart';
+import 'package:firesense/user_side/contacts/contacts_list_screen.dart';
+import 'package:firesense/user_side/devices/devices_screen.dart';
+import 'package:firesense/user_side/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firesense/user_side/emergency_dial_screen.dart';
-import 'package:firesense/user_side/home_screen.dart';
-import 'package:firesense/user_side/fire_prevention_screen.dart';
-import 'package:firesense/user_side/fire_checklist_screen.dart';
+import 'package:firesense/user_side/emergency/emergency_dial_screen.dart';
+import 'package:firesense/user_side/home/home_screen.dart';
+import 'package:firesense/user_side/materials/fire_prevention_screen.dart';
+import 'package:firesense/user_side/materials/fire_checklist_screen.dart';
 
 class MaterialScreen extends StatefulWidget {
   const MaterialScreen({Key? key}) : super(key: key);
@@ -226,11 +227,16 @@ class _MaterialScreenState extends State<MaterialScreen> {
             } else if (index == 2) {
               Navigator.pushReplacement(
                 context,
+                MaterialPageRoute(builder: (context) => const DevicesScreen()),
+              );
+            } else if (index == 3) {
+              Navigator.pushReplacement(
+                context,
                 MaterialPageRoute(
                   builder: (context) => const EmergencyDialScreen(),
                 ),
               );
-            } else if (index == 3) {
+            } else if (index == 4) {
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (context) => const SettingsScreen()),
@@ -242,6 +248,10 @@ class _MaterialScreenState extends State<MaterialScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.menu_book),
               label: 'Materials',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.sensors),
+              label: 'Devices',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.phone_in_talk),

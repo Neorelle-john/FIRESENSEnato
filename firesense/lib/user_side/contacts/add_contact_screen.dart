@@ -1,46 +1,25 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:firesense/user_side/emergency_dial_screen.dart';
-import 'package:firesense/user_side/material_screen.dart';
-import 'package:firesense/user_side/settings_screen.dart';
+import 'package:firesense/user_side/emergency/emergency_dial_screen.dart';
+import 'package:firesense/user_side/materials/material_screen.dart';
+import 'package:firesense/user_side/settings/settings_screen.dart';
 
-class EditContactScreen extends StatefulWidget {
-  final DocumentSnapshot contactDoc;
+class AddContactScreen extends StatefulWidget {
   final VoidCallback? onContactsChanged;
 
-  const EditContactScreen({
-    Key? key,
-    required this.contactDoc,
-    this.onContactsChanged,
-  }) : super(key: key);
+  const AddContactScreen({Key? key, this.onContactsChanged}) : super(key: key);
 
   @override
-  State<EditContactScreen> createState() => _EditContactScreenState();
+  State<AddContactScreen> createState() => _AddContactScreenState();
 }
 
-class _EditContactScreenState extends State<EditContactScreen> {
+class _AddContactScreenState extends State<AddContactScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _firstNameController;
-  late TextEditingController _lastNameController;
-  late TextEditingController _phoneController;
+  final _firstNameController = TextEditingController();
+  final _lastNameController = TextEditingController();
+  final _phoneController = TextEditingController();
   bool _loading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Parse the existing name into first and last name
-    final fullName = widget.contactDoc['name'] ?? '';
-    final nameParts = fullName.split(' ');
-    final firstName = nameParts.isNotEmpty ? nameParts[0] : '';
-    final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-
-    _firstNameController = TextEditingController(text: firstName);
-    _lastNameController = TextEditingController(text: lastName);
-    _phoneController = TextEditingController(
-      text: widget.contactDoc['phone'] ?? '',
-    );
-  }
 
   @override
   void dispose() {
@@ -107,7 +86,7 @@ class _EditContactScreenState extends State<EditContactScreen> {
     return titleCaseWords.join(' ');
   }
 
-  Future<void> _updateContact() async {
+  Future<void> _addContact() async {
     if (!_formKey.currentState!.validate()) return;
 
     final firstName = _toTitleCase(_firstNameController.text.trim());
@@ -135,41 +114,34 @@ class _EditContactScreenState extends State<EditContactScreen> {
       // Clean the phone number before saving
       final cleanPhone = _cleanPhoneNumber(phone);
 
-      // Check if phone number already exists (excluding current contact)
+      // Check if phone number already exists
       final existingContacts =
           await contactsRef.where('phone', isEqualTo: cleanPhone).get();
 
       if (existingContacts.docs.isNotEmpty) {
-        // Check if the existing contact is not the current one being edited
-        final isCurrentContact = existingContacts.docs.any(
-          (doc) => doc.id == widget.contactDoc.id,
+        setState(() => _loading = false);
+        final existingContact = existingContacts.docs.first.data();
+        final existingName = existingContact['name'] ?? 'Unknown Contact';
+        _showErrorDialog(
+          'This phone number is already saved to "$existingName". Please use a different number.',
         );
-
-        if (!isCurrentContact) {
-          setState(() => _loading = false);
-          final existingContact = existingContacts.docs.first.data();
-          final existingName = existingContact['name'] ?? 'Unknown Contact';
-          _showErrorDialog(
-            'This phone number is already saved to "$existingName". Please use a different number.',
-          );
-          return;
-        }
+        return;
       }
 
-      await contactsRef.doc(widget.contactDoc.id).update({
+      await contactsRef.add({
         'name': fullName,
         'firstName': firstName,
         'lastName': lastName,
         'phone': cleanPhone,
-        'updatedAt': FieldValue.serverTimestamp(),
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
       setState(() => _loading = false);
 
-      _showSuccessDialog('Contact updated successfully!');
+      _showSuccessDialog('Contact added successfully!');
     } catch (e) {
       setState(() => _loading = false);
-      _showErrorDialog('Failed to update contact. Please try again.');
+      _showErrorDialog('Failed to add contact. Please try again.');
     }
   }
 
@@ -423,7 +395,7 @@ class _EditContactScreenState extends State<EditContactScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Edit Contact',
+          'Add Contact',
           style: TextStyle(
             color: Color(0xFF8B0000),
             fontWeight: FontWeight.bold,
@@ -464,14 +436,14 @@ class _EditContactScreenState extends State<EditContactScreen> {
                             radius: 22,
                             backgroundColor: primaryRed.withOpacity(0.12),
                             child: const Icon(
-                              Icons.edit,
+                              Icons.person_add_alt_1,
                               color: Color(0xFF8B0000),
                             ),
                           ),
                           const SizedBox(width: 12),
                           const Expanded(
                             child: Text(
-                              'Update contact details',
+                              'Add a trusted contact',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
@@ -483,7 +455,7 @@ class _EditContactScreenState extends State<EditContactScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Keep your contact information accurate so we can reach them quickly.',
+                        'We will notify your contact during emergencies. Make sure all details are correct.',
                         style: TextStyle(
                           color: Colors.grey.shade700,
                           fontSize: 13.5,
@@ -608,7 +580,7 @@ class _EditContactScreenState extends State<EditContactScreen> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton.icon(
-                    onPressed: _loading ? null : _updateContact,
+                    onPressed: _loading ? null : _addContact,
                     icon:
                         _loading
                             ? const SizedBox(
@@ -619,9 +591,9 @@ class _EditContactScreenState extends State<EditContactScreen> {
                                 color: Colors.white,
                               ),
                             )
-                            : const Icon(Icons.save_outlined),
+                            : const Icon(Icons.check_circle_outline),
                     label: Text(
-                      _loading ? 'Updating...' : 'Update Contact',
+                      _loading ? 'Saving...' : 'Save Contact',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
