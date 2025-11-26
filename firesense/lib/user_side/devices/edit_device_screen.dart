@@ -1,66 +1,83 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart'; // FIXED
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'location_picker_screen.dart';
 
-class AddDeviceScreen extends StatefulWidget {
-  const AddDeviceScreen({super.key});
+class EditDeviceScreen extends StatefulWidget {
+  final String deviceId;
+
+  const EditDeviceScreen({super.key, required this.deviceId});
 
   @override
-  State<AddDeviceScreen> createState() => _AddDeviceScreenState();
+  State<EditDeviceScreen> createState() => _EditDeviceScreenState();
 }
 
-class _AddDeviceScreenState extends State<AddDeviceScreen> {
-  final TextEditingController _deviceIdController = TextEditingController();
+class _EditDeviceScreenState extends State<EditDeviceScreen> {
   final TextEditingController _deviceNameController = TextEditingController();
   bool _isLoading = false;
+  bool _isLoadingData = true;
 
   double? selectedLat;
   double? selectedLng;
 
   final _formKey = GlobalKey<FormState>();
 
-  Future<void> pickLocation() async {
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Location services are disabled.")),
-        );
-        return;
-      }
+  @override
+  void initState() {
+    super.initState();
+    _loadDeviceData();
+  }
 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Location permission denied.")),
-          );
-          return;
+  Future<void> _loadDeviceData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("User not logged in.")));
+        Navigator.pop(context);
+      }
+      return;
+    }
+
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('devices')
+              .doc(widget.deviceId)
+              .get();
+
+      if (snapshot.exists && mounted) {
+        final data = snapshot.data()!;
+        setState(() {
+          _deviceNameController.text = data['name'] ?? '';
+          selectedLat = data['lat']?.toDouble();
+          selectedLng = data['lng']?.toDouble();
+          _isLoadingData = false;
+        });
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text("Device not found.")));
+          Navigator.pop(context);
         }
       }
-
-      Position pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      setState(() {
-        selectedLat = pos.latitude;
-        selectedLng = pos.longitude;
-      });
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error getting location: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error loading device: $e")));
+        Navigator.pop(context);
+      }
     }
   }
 
-  Future<void> saveDevice() async {
+  Future<void> updateDevice() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (selectedLat == null || selectedLng == null) {
@@ -81,114 +98,26 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       return;
     }
 
-    final deviceId = _deviceIdController.text.trim();
     final deviceName = _deviceNameController.text.trim();
 
     try {
-      // Check if device exists in Realtime Database
-      final dbRef = FirebaseDatabase.instance.ref().child("Devices/$deviceId");
-
-      final snapshot = await dbRef.get();
-      if (!snapshot.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Device ID '$deviceId' not found in database."),
-          ),
-        );
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      // Check if user already has this device in Firestore
-      final existingDevice = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('devices')
-          .doc(deviceId)
-          .get();
-
-      if (existingDevice.exists) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'This device is already in your account.',
-            ),
-            duration: Duration(seconds: 2),
-          ),
-        );
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      // Check if device is already claimed by another user using transaction
-      // This prevents race conditions where two users try to claim the same device
-      final claimedRef = dbRef.child('claimedBy');
-      final claimedSnapshot = await claimedRef.get();
-      
-      print('DEBUG: Checking claimedBy at path: Devices/$deviceId/claimedBy');
-      print('DEBUG: claimedSnapshot.exists: ${claimedSnapshot.exists}');
-      print('DEBUG: User ID: ${user.uid}');
-      
-      if (claimedSnapshot.exists) {
-        final claimedByUserId = claimedSnapshot.value as String?;
-        print('DEBUG: Device is already claimed by: $claimedByUserId');
-        if (claimedByUserId != null && claimedByUserId != user.uid) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'This device is already claimed by another user. '
-                'You cannot add it to your account.',
-              ),
-              duration: Duration(seconds: 3),
-              backgroundColor: Colors.red,
-            ),
-          );
-          setState(() => _isLoading = false);
-          return;
-        }
-        // Device is already claimed by current user - proceed to add to Firestore
-        print('DEBUG: Device already claimed by current user, proceeding...');
-      } else {
-        // Device is not claimed yet - claim it atomically for this user
-        print('DEBUG: Device not claimed yet, claiming for user ${user.uid}...');
-        try {
-          await claimedRef.set(user.uid).timeout(
-                const Duration(seconds: 5),
-              );
-          print('DEBUG: Successfully set claimedBy to ${user.uid} for device $deviceId');
-        } catch (e, stackTrace) {
-          print('ERROR: Failed to set claimedBy field: $e');
-          print('ERROR: Stack trace: $stackTrace');
-          // Re-throw to be caught by outer catch block
-          throw Exception('Failed to claim device: $e');
-        }
-      }
-
-      print('DEBUG: About to save device to Firestore...');
-      
-      // Save to Firestore
+      // Update Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .collection('devices')
-          .doc(deviceId)
-          .set({
-            'deviceId': deviceId,
-            'name': deviceName,
-            'lat': selectedLat,
-            'lng': selectedLng,
-            'created_at': DateTime.now(),
-          });
+          .doc(widget.deviceId)
+          .update({'name': deviceName, 'lat': selectedLat, 'lng': selectedLng});
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Device added successfully!")),
+        const SnackBar(content: Text("Device updated successfully!")),
       );
 
       if (mounted) Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Error saving device: $e")));
+      ).showSnackBar(SnackBar(content: Text("Error updating device: $e")));
     }
 
     setState(() => _isLoading = false);
@@ -200,13 +129,32 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     final Color bgGrey = const Color(0xFFF5F5F5);
     final Color cardWhite = Colors.white;
 
+    if (_isLoadingData) {
+      return Scaffold(
+        backgroundColor: bgGrey,
+        appBar: AppBar(
+          backgroundColor: bgGrey,
+          elevation: 0,
+          title: const Text(
+            "Edit Device",
+            style: TextStyle(
+              color: Color(0xFF8B0000),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          iconTheme: const IconThemeData(color: Colors.black87),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: bgGrey,
       appBar: AppBar(
         backgroundColor: bgGrey,
         elevation: 0,
         title: const Text(
-          "Add Device",
+          "Edit Device",
           style: TextStyle(
             color: Color(0xFF8B0000),
             fontWeight: FontWeight.bold,
@@ -266,29 +214,20 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Device ID
+                    // Device ID (Read-only)
                     TextFormField(
-                      controller: _deviceIdController,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return "Device ID cannot be empty";
-                        }
-                        return null;
-                      },
+                      initialValue: widget.deviceId,
+                      enabled: false,
                       decoration: InputDecoration(
-                        labelText: "Device ID (e.g., Device1)",
+                        labelText: "Device ID",
                         labelStyle: const TextStyle(color: Colors.black54),
                         prefixIcon: const Icon(
                           Icons.info_rounded,
                           color: Colors.black54,
                         ),
-                        enabledBorder: OutlineInputBorder(
+                        disabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(15),
                           borderSide: const BorderSide(color: Colors.black26),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(15),
-                          borderSide: BorderSide(color: primaryRed, width: 2),
                         ),
                       ),
                     ),
@@ -369,9 +308,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                       icon: const Icon(Icons.location_on, size: 20),
                       label: const Text(
                         "Set Device Location",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: primaryRed,
@@ -385,17 +322,6 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                         ),
                       ),
                     ),
-
-                    const SizedBox(height: 10),
-
-                    // if (selectedLat != null && selectedLng != null)
-                    //   Text(
-                    //     "Location: (${selectedLat!.toStringAsFixed(5)}, ${selectedLng!.toStringAsFixed(5)})",
-                    //     style: const TextStyle(
-                    //       fontSize: 14,
-                    //       fontWeight: FontWeight.w600,
-                    //     ),
-                    //   ),
                   ],
                 ),
               ),
@@ -405,7 +331,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : saveDevice,
+                  onPressed: _isLoading ? null : updateDevice,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: primaryRed,
                     padding: const EdgeInsets.symmetric(vertical: 15),
@@ -417,7 +343,7 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                       _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(
-                            "Save Device",
+                            "Update Device",
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,

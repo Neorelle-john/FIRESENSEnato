@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../admin_side/home_screen.dart';
 import 'signup_screen.dart';
 import '../user_side/home/home_screen.dart';
@@ -16,33 +17,49 @@ class _SignInScreenState extends State<SignInScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   void _signIn() async {
+    if (_isLoading) return; // Prevent multiple submissions
+
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     // Basic validation
     if (email.isEmpty || password.isEmpty) {
-      _showErrorDialog('Please fill in all the fields.');
+      _showErrorSnackBar('Please fill in all the fields.');
       return;
     }
 
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegex.hasMatch(email)) {
-      _showErrorDialog('Please enter a valid email address.');
+      _showErrorSnackBar('Please enter a valid email address.');
       return;
     }
 
+    setState(() => _isLoading = true);
+
     try {
-      await _auth.signInWithEmailAndPassword(email: email, password: password);
+      await _auth.signInWithEmailAndPassword(
+        email: email, 
+        password: password,
+      );
       if (!mounted) return;
 
-      // Show success message
+      setState(() => _isLoading = false);
+
+      // Show success message briefly, then navigate
+      final navigator = Navigator.of(context);
       _showSuccessDialog('Signed in successfully!');
 
-      // Navigate after a short delay to show the success message
+      // Navigate after a short delay
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (!mounted) return;
+        // Close success dialog if still open
+        if (navigator.canPop()) {
+          navigator.pop();
+        }
+        
         if (email == 'admin@gmail.com') {
           Navigator.pushAndRemoveUntil(
             context,
@@ -57,7 +74,48 @@ class _SignInScreenState extends State<SignInScreen> {
           );
         }
       });
+    } on PlatformException catch (e) {
+      // Catch PlatformException FIRST (before FirebaseAuthException)
+      // because some Firebase errors come as PlatformException
+      setState(() => _isLoading = false);
+      
+      print('PlatformException caught - Code: ${e.code}, Message: ${e.message}');
+      print('PlatformException details: ${e.toString()}');
+      
+      String message;
+      final errorCode = e.code.toString();
+      final errorMessage = (e.message ?? '').toLowerCase();
+
+      // Handle PlatformException with ERROR_INVALID_CREDENTIAL
+      if (errorCode == 'ERROR_INVALID_CREDENTIAL' || 
+          errorCode.contains('INVALID_CREDENTIAL') ||
+          errorCode.contains('invalid_credential') ||
+          errorMessage.contains('invalid credential') ||
+          errorMessage.contains('supplied auth credential') ||
+          errorMessage.contains('incorrect') ||
+          errorMessage.contains('malformed') ||
+          errorMessage.contains('expired')) {
+        message = 'Invalid email or password. Please check your credentials and try again.';
+      } else if (errorCode == 'ERROR_WRONG_PASSWORD' || 
+                 errorCode.contains('WRONG_PASSWORD') ||
+                 errorMessage.contains('wrong password')) {
+        message = 'Incorrect password. Please try again.';
+      } else if (errorCode == 'ERROR_USER_NOT_FOUND' ||
+                 errorCode.contains('USER_NOT_FOUND') ||
+                 errorMessage.contains('user not found')) {
+        message = 'No account found with this email address.';
+      } else if (errorCode == 'ERROR_NETWORK_REQUEST_FAILED' ||
+                 errorCode.contains('NETWORK') ||
+                 errorMessage.contains('network')) {
+        message = 'Network error. Please check your internet connection.';
+      } else {
+        // Default message for PlatformException - likely credential error
+        message = 'Invalid email or password. Please check your credentials and try again.';
+      }
+
+      _showErrorDialog(message);
     } on FirebaseAuthException catch (e) {
+      setState(() => _isLoading = false);
       String message;
 
       switch (e.code) {
@@ -68,25 +126,71 @@ class _SignInScreenState extends State<SignInScreen> {
           message = 'This account has been disabled.';
           break;
         case 'user-not-found':
-          message = 'No account found with this email.';
+          message = 'No account found with this email address.';
           break;
         case 'wrong-password':
-          message = 'Incorrect password.';
+          message = 'Incorrect password. Please try again.';
           break;
         case 'invalid-credential':
-          message = 'Invalid email or password.';
+        case 'invalid-verification-code':
+        case 'invalid-verification-id':
+          message = 'Invalid email or password. Please check your credentials and try again.';
           break;
         case 'too-many-requests':
-          message = 'Too many failed attempts. Please try again later.';
+          message = 'Too many failed attempts. Please try again later or reset your password.';
+          break;
+        case 'network-request-failed':
+          message = 'Network error. Please check your internet connection.';
           break;
         default:
-          message = 'Sign in failed. ${e.message}';
+          message = 'Sign in failed. Please try again.';
       }
 
       _showErrorDialog(message);
-    } catch (e) {
-      _showErrorDialog('An unexpected error occurred. Please try again.');
+    } catch (e, stackTrace) {
+      setState(() => _isLoading = false);
+      
+      print('Generic exception caught: $e');
+      print('Exception type: ${e.runtimeType}');
+      print('Stack trace: $stackTrace');
+      
+      String errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+      
+      // Check if it's an invalid credential error in the message
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('invalid credential') || 
+          errorString.contains('incorrect') ||
+          errorString.contains('error_invalid_credential') ||
+          errorString.contains('supplied auth credential') ||
+          errorString.contains('malformed') ||
+          errorString.contains('expired')) {
+        errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+      } else if (errorString.contains('network')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (errorString.contains('user not found')) {
+        errorMessage = 'No account found with this email address.';
+      } else if (errorString.contains('platformexception')) {
+        // If it's a PlatformException that wasn't caught, still show credential error
+        errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+      }
+      
+      _showErrorDialog(errorMessage);
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFF8B0000),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   void _showErrorDialog(String message) {
@@ -388,22 +492,32 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: _signIn,
+                        onPressed: _isLoading ? null : _signIn,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF8B0000),
+                          backgroundColor: const Color(0xFF8B0000),
+                          disabledBackgroundColor: const Color(0xFF8B0000).withOpacity(0.6),
                           minimumSize: const Size.fromHeight(52),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: const Text(
-                          'Sign In',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Sign In',
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                       const SizedBox(height: 18),
                       GestureDetector(

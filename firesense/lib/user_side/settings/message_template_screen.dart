@@ -66,6 +66,8 @@ This is an automated emergency message from FireSense.
 
 I may be in danger and need immediate assistance. Please contact emergency services and check on my safety.
 
+Device: [DEVICE_NAME]
+Device ID: [DEVICE_ID]
 My location: [LOCATION]
 Time: [TIME]
 Date: [DATE]

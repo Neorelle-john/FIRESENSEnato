@@ -8,6 +8,10 @@ import 'package:firesense/user_side/settings/profile_screen.dart';
 import 'package:firesense/user_side/settings/message_template_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firesense/credentials/signin_screen.dart';
+import 'package:firesense/services/alarm_widget.dart';
+import 'package:firesense/services/sensor_alarm_services.dart';
+import 'package:firesense/services/notification_service.dart';
+import 'dart:async';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -17,9 +21,108 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool fireAlerts = true;
-  bool notificationTone = true;
-  bool vibrationMode = true;
+  bool _notificationsEnabled = true;
+  bool _isLoadingNotificationPref = true;
+  StreamSubscription? _alarmSubscription;
+  bool _showAlarm = false;
+  String? _alarmDeviceName;
+  String? _alarmDeviceId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize global alarm monitoring
+    SensorAlarmService().startListeningToAllUserDevices();
+
+    // Listen to alarm stream
+    _alarmSubscription = SensorAlarmService().alarmStream.listen(
+      (alarmData) {
+        if (mounted) {
+          setState(() {
+            _showAlarm = true;
+            _alarmDeviceName = alarmData['deviceName'];
+            _alarmDeviceId = alarmData['deviceId'];
+          });
+        }
+      },
+      onError: (error) {
+        print('Alarm stream error in SettingsScreen: $error');
+        // Don't crash the app on stream errors
+      },
+    );
+
+    // Load notification preference
+    _loadNotificationPreference();
+  }
+
+  @override
+  void dispose() {
+    _alarmSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadNotificationPreference() async {
+    setState(() {
+      _isLoadingNotificationPref = true;
+    });
+
+    try {
+      // Refresh preference from Firestore
+      await NotificationService().refreshPreference();
+
+      if (mounted) {
+        setState(() {
+          _notificationsEnabled = NotificationService().areNotificationsEnabled;
+          _isLoadingNotificationPref = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading notification preference: $e');
+      if (mounted) {
+        setState(() {
+          _notificationsEnabled = true; // Default to enabled on error
+          _isLoadingNotificationPref = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    setState(() {
+      _notificationsEnabled = value;
+    });
+
+    try {
+      await NotificationService().setNotificationsEnabled(value);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              value ? 'Notifications enabled' : 'Notifications disabled',
+            ),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF8B0000),
+          ),
+        );
+      }
+    } catch (e) {
+      // Revert on error
+      setState(() {
+        _notificationsEnabled = !value;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating notification settings: $e'),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
@@ -130,247 +233,260 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: lightGrey,
-      appBar: AppBar(
-        backgroundColor: lightGrey,
-        elevation: 0,
-        title: const Text(
-          'Settings',
-          style: TextStyle(
-            color: Color(0xFF8B0000),
-            fontWeight: FontWeight.bold,
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: lightGrey,
+          appBar: AppBar(
+            backgroundColor: lightGrey,
+            elevation: 0,
+            title: const Text(
+              'Settings',
+              style: TextStyle(
+                color: Color(0xFF8B0000),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            automaticallyImplyLeading: false,
           ),
-        ),
-        automaticallyImplyLeading: false,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 16),
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
 
-              // Account Section
-              sectionHeader('Account'),
-              settingsTile(
-                title: 'Profile',
-                icon: Icons.person_outline,
-                subtitle: 'Manage your personal information',
-                onTap: () {
-                  Navigator.push(
+                  // Account Section
+                  sectionHeader('Account'),
+                  settingsTile(
+                    title: 'Profile',
+                    icon: Icons.person_outline,
+                    subtitle: 'Manage your personal information',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ProfileScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // Device Section
+                  sectionHeader('Device'),
+                  settingsTile(
+                    title: 'View Devices',
+                    icon: Icons.devices_other,
+                    subtitle: 'Manage your connected devices',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DevicesScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  // Alert and Notification Section
+                  sectionHeader('Notifications'),
+                  settingsTile(
+                    title:
+                        _notificationsEnabled
+                            ? 'Turn off notifications'
+                            : 'Turn on notifications',
+                    icon:
+                        _notificationsEnabled
+                            ? Icons.notifications_active
+                            : Icons.notifications_off,
+                    subtitle:
+                        _notificationsEnabled
+                            ? 'You\'ll receive fire alarm alerts'
+                            : 'Notifications are currently disabled',
+                    trailing:
+                        _isLoadingNotificationPref
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                            : Switch(
+                              value: _notificationsEnabled,
+                              onChanged: _toggleNotifications,
+                              activeColor: Colors.white,
+                              activeTrackColor: primaryRed,
+                              inactiveThumbColor: Colors.grey.shade300,
+                              inactiveTrackColor: Colors.grey.shade200,
+                            ),
+                  ),
+
+                  // Emergency Contacts Section
+                  sectionHeader('Emergency'),
+                  settingsTile(
+                    title: 'Manage Contacts',
+                    icon: Icons.contacts_outlined,
+                    subtitle: 'Add or edit emergency contacts',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ContactsListScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  settingsTile(
+                    title: 'Message Template',
+                    icon: Icons.message_outlined,
+                    subtitle: 'Customize emergency message content',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MessageTemplateScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Logout Button
+                  Container(
+                    width: double.infinity,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryRed.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton.icon(
+                      onPressed: _logout,
+                      icon: const Icon(Icons.logout, size: 20),
+                      label: const Text(
+                        'Sign Out',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryRed,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: cardWhite,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 8,
+                  offset: Offset(0, -2),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: BottomNavigationBar(
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              selectedItemColor: primaryRed,
+              unselectedItemColor: Colors.black54,
+              showSelectedLabels: true,
+              showUnselectedLabels: true,
+              currentIndex: 4,
+              onTap: (index) {
+                if (index == 0) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const HomeScreen()),
+                  );
+                } else if (index == 1) {
+                  Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const ProfileScreen(),
+                      builder: (context) => const MaterialScreen(),
                     ),
                   );
-                },
-              ),
-
-              // Device Section
-              sectionHeader('Device'),
-              settingsTile(
-                title: 'Connected Devices',
-                icon: Icons.devices_other,
-                subtitle: 'View and manage connected devices',
-                onTap: () {
-                  Navigator.push(
+                } else if (index == 2) {
+                  Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
                       builder: (context) => const DevicesScreen(),
                     ),
                   );
-                },
-              ),
-              settingsTile(
-                title: 'Test Alarm',
-                icon: Icons.warning_amber_outlined,
-                subtitle: 'Test your emergency alert system',
-                onTap: () {},
-              ),
-
-              // Alert and Notification Section
-              sectionHeader('Alerts & Notifications'),
-              settingsTile(
-                title: 'Fire Alerts',
-                icon: Icons.local_fire_department_outlined,
-                subtitle: 'Receive notifications about fire emergencies',
-                trailing: Switch(
-                  value: fireAlerts,
-                  onChanged: (val) => setState(() => fireAlerts = val),
-                  activeColor: Colors.white,
-                  activeTrackColor: primaryRed,
-                  inactiveThumbColor: Colors.grey.shade300,
-                  inactiveTrackColor: Colors.grey.shade200,
-                ),
-              ),
-              settingsTile(
-                title: 'Notification Tone',
-                icon: Icons.volume_up_outlined,
-                subtitle: 'Play sound for emergency alerts',
-                trailing: Switch(
-                  value: notificationTone,
-                  onChanged: (val) => setState(() => notificationTone = val),
-                  activeColor: Colors.white,
-                  activeTrackColor: primaryRed,
-                  inactiveThumbColor: Colors.grey.shade300,
-                  inactiveTrackColor: Colors.grey.shade200,
-                ),
-              ),
-              settingsTile(
-                title: 'Vibration Mode',
-                icon: Icons.vibration,
-                subtitle: 'Vibrate device during emergencies',
-                trailing: Switch(
-                  value: vibrationMode,
-                  onChanged: (val) => setState(() => vibrationMode = val),
-                  activeColor: Colors.white,
-                  activeTrackColor: primaryRed,
-                  inactiveThumbColor: Colors.grey.shade300,
-                  inactiveTrackColor: Colors.grey.shade200,
-                ),
-              ),
-
-              // Emergency Contacts Section
-              sectionHeader('Emergency Contacts'),
-              settingsTile(
-                title: 'Manage Contacts',
-                icon: Icons.contacts_outlined,
-                subtitle: 'Add, edit, or remove emergency contacts',
-                onTap: () {
-                  Navigator.push(
+                } else if (index == 3) {
+                  Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const ContactsListScreen(),
+                      builder: (context) => const EmergencyDialScreen(),
                     ),
                   );
-                },
-              ),
-              settingsTile(
-                title: 'Message Template',
-                icon: Icons.message_outlined,
-                subtitle: 'Customize emergency message content',
-                onTap: () {
-                  Navigator.push(
+                } else if (index == 4) {
+                  Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const MessageTemplateScreen(),
+                      builder: (context) => const SettingsScreen(),
                     ),
                   );
-                },
-              ),
-
-              const SizedBox(height: 32),
-
-              // Logout Button
-              Container(
-                width: double.infinity,
-                height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryRed.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                }
+              },
+              items: const [
+                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.menu_book),
+                  label: 'Materials',
                 ),
-                child: ElevatedButton.icon(
-                  onPressed: _logout,
-                  icon: const Icon(Icons.logout, size: 20),
-                  label: const Text(
-                    'Sign Out',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryRed,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.sensors),
+                  label: 'Devices',
                 ),
-              ),
-
-              const SizedBox(height: 24),
-            ],
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.phone_in_talk),
+                  label: 'Emergency Dial',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings),
+                  label: 'Settings',
+                ),
+              ],
+            ),
           ),
         ),
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: cardWhite,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(24),
-            topRight: Radius.circular(24),
+        if (_showAlarm)
+          AlarmOverlay(
+            deviceName: _alarmDeviceName,
+            deviceId: _alarmDeviceId,
+            onClose: () {
+              setState(() {
+                _showAlarm = false;
+              });
+              SensorAlarmService().clearAlarm();
+            },
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 8,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: primaryRed,
-          unselectedItemColor: Colors.black54,
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
-          currentIndex: 4,
-          onTap: (index) {
-            if (index == 0) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const HomeScreen()),
-              );
-            } else if (index == 1) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const MaterialScreen()),
-              );
-            } else if (index == 3) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const EmergencyDialScreen(),
-                ),
-              );
-            } else if (index == 4) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            }
-          },
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.menu_book),
-              label: 'Materials',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.sensors),
-              label: 'Devices',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.phone_in_talk),
-              label: 'Emergency Dial',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings),
-              label: 'Settings',
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
