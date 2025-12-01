@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AdminClientsScreen extends StatefulWidget {
   const AdminClientsScreen({Key? key}) : super(key: key);
@@ -8,145 +11,277 @@ class AdminClientsScreen extends StatefulWidget {
 }
 
 class _AdminClientsScreenState extends State<AdminClientsScreen> {
-  final List<Map<String, dynamic>> clients = [
-    {
-      'name': 'Urdaneta City Hall',
-      'devices': [
-        'FireSense Pro - Mayor\'s Office',
-        'FireSense Pro - Council Chamber',
-        'FireSense Pro - Records Section',
-        'FireSense Pro - Treasury Office',
-      ],
-    },
-    {
-      'name': 'Urdaneta Central Market',
-      'devices': [
-        'FireSense Pro - Meat Section',
-        'FireSense Pro - Vegetable Area',
-        'FireSense Pro - Dry Goods Section',
-        'FireSense Pro - Food Court',
-      ],
-    },
-    {
-      'name': 'Pangasinan State University - Urdaneta',
-      'devices': [
-        'FireSense Pro - Main Library',
-        'FireSense Pro - Computer Laboratory',
-        'FireSense Pro - Science Laboratory',
-        'FireSense Pro - Cafeteria',
-        'FireSense Pro - Administration Building',
-      ],
-    },
-    {
-      'name': 'Urdaneta District Hospital',
-      'devices': [
-        'FireSense Pro - Emergency Room',
-        'FireSense Pro - Operating Room',
-        'FireSense Pro - ICU Ward',
-        'FireSense Pro - Pharmacy',
-        'FireSense Pro - Laboratory',
-        'FireSense Pro - Patient Wards',
-      ],
-    },
-    {
-      'name': 'CB Mall Urdaneta',
-      'devices': [
-        'FireSense Pro - Food Court',
-        'FireSense Pro - Department Store',
-        'FireSense Pro - Parking lot',
-      ],
-    },
-    {
-      'name': 'Urdaneta Public Market',
-      'devices': [
-        'FireSense Pro - Fish Section',
-        'FireSense Pro - Poultry Area',
-        'FireSense Pro - Rice Section',
-        'FireSense Pro - Spice Corner',
-      ],
-    },
-  ];
+  final List<Map<String, dynamic>> clients = [];
+  bool _isLoading = true;
+  StreamSubscription<QuerySnapshot>? _usersSubscription;
+  StreamSubscription<QuerySnapshot>? _clientsSubscription;
 
-  void _addClient() async {
-    String? clientName = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        final controller = TextEditingController();
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text('Add Client'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(labelText: 'Client Name'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8B0000),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () => Navigator.pop(context, controller.text.trim()),
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-    if (clientName != null && clientName.isNotEmpty) {
-      setState(() {
-        clients.add({'name': clientName, 'devices': []});
+  @override
+  void initState() {
+    super.initState();
+    _loadClients();
+  }
+
+  @override
+  void dispose() {
+    _usersSubscription?.cancel();
+    _clientsSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadClients() async {
+    final adminUser = FirebaseAuth.instance.currentUser;
+    if (adminUser == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      // First, check if admin has clients stored
+      final adminClientsRef = FirebaseFirestore.instance
+          .collection('admin')
+          .doc(adminUser.uid)
+          .collection('clients');
+
+      // Check initial state
+      final initialSnapshot = await adminClientsRef.get();
+      if (initialSnapshot.docs.isEmpty) {
+        // If no clients stored, fetch from users collection and sync
+        await _syncUsersToAdminClients();
+      } else {
+        // Load clients from admin collection
+        await _loadClientsFromAdmin();
+      }
+
+      // Listen to admin's clients collection for updates
+      _clientsSubscription = adminClientsRef.snapshots().listen((snapshot) {
+        _loadClientsFromAdmin();
       });
+
+      // Also listen to users collection for new users
+      _usersSubscription = FirebaseFirestore.instance
+          .collection('users')
+          .snapshots()
+          .listen((snapshot) {
+            // Sync new users to admin clients (only if not already syncing)
+            if (!_isLoading) {
+              _syncUsersToAdminClients();
+            }
+          });
+    } catch (e) {
+      print('Error loading clients: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _syncUsersToAdminClients() async {
+    final adminUser = FirebaseAuth.instance.currentUser;
+    if (adminUser == null) return;
+
+    try {
+      // Get all users from /users collection
+      final usersSnapshot =
+          await FirebaseFirestore.instance.collection('users').get();
+
+      final adminClientsRef = FirebaseFirestore.instance
+          .collection('admin')
+          .doc(adminUser.uid)
+          .collection('clients');
+
+      // Sync each user to admin's clients collection
+      for (var userDoc in usersSnapshot.docs) {
+        final userId = userDoc.id;
+        final userData = userDoc.data();
+
+        // Skip admin user itself
+        if (userId == adminUser.uid) continue;
+
+        // Get user's devices
+        final devicesSnapshot =
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(userId)
+                .collection('devices')
+                .get();
+
+        final devices =
+            devicesSnapshot.docs.map((doc) {
+              final deviceData = doc.data();
+              return {
+                'deviceId': deviceData['deviceId'] ?? doc.id,
+                'name': deviceData['name'] ?? 'Unknown Device',
+                ...deviceData,
+              };
+            }).toList();
+
+        // Store in admin's clients collection
+        await adminClientsRef.doc(userId).set({
+          'userId': userId,
+          'name': userData['name'] ?? 'Unknown User',
+          'email': userData['email'] ?? '',
+          'phone': userData['phone'] ?? '',
+          'address': userData['address'] ?? '',
+          'createdAt': userData['createdAt'] ?? FieldValue.serverTimestamp(),
+          'syncedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        // Store devices as subcollection
+        final devicesRef = adminClientsRef.doc(userId).collection('devices');
+        for (var device in devices) {
+          await devicesRef.doc(device['deviceId']).set(device);
+        }
+      }
+
+      // Reload clients after sync
+      _loadClientsFromAdmin();
+    } catch (e) {
+      print('Error syncing users to admin clients: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadClientsFromAdmin() async {
+    final adminUser = FirebaseAuth.instance.currentUser;
+    if (adminUser == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    try {
+      final clientsSnapshot =
+          await FirebaseFirestore.instance
+              .collection('admin')
+              .doc(adminUser.uid)
+              .collection('clients')
+              .get();
+
+      final List<Map<String, dynamic>> loadedClients = [];
+
+      for (var clientDoc in clientsSnapshot.docs) {
+        final clientData = clientDoc.data();
+
+        // Get devices for this client
+        final devicesSnapshot =
+            await FirebaseFirestore.instance
+                .collection('admin')
+                .doc(adminUser.uid)
+                .collection('clients')
+                .doc(clientDoc.id)
+                .collection('devices')
+                .get();
+
+        final devices =
+            devicesSnapshot.docs.map((doc) {
+              final deviceData = doc.data();
+              return deviceData['name'] ?? 'Unknown Device';
+            }).toList();
+
+        loadedClients.add({
+          'id': clientDoc.id,
+          'name': clientData['name'] ?? 'Unknown User',
+          'email': clientData['email'] ?? '',
+          'phone': clientData['phone'] ?? '',
+          'address': clientData['address'] ?? '',
+          'devices': devices,
+        });
+      }
+
+      if (mounted) {
+        setState(() {
+          clients.clear();
+          clients.addAll(loadedClients);
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading clients from admin: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _syncUserToAdminClient(String userId) async {
+    final adminUser = FirebaseAuth.instance.currentUser;
+    if (adminUser == null) return;
+
+    try {
+      // Get user data
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
+
+      if (!userDoc.exists) return;
+
+      final userData = userDoc.data()!;
+
+      // Get user's devices
+      final devicesSnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .collection('devices')
+              .get();
+
+      final devices =
+          devicesSnapshot.docs.map((doc) {
+            final deviceData = doc.data();
+            return {
+              'deviceId': deviceData['deviceId'] ?? doc.id,
+              'name': deviceData['name'] ?? 'Unknown Device',
+              ...deviceData,
+            };
+          }).toList();
+
+      // Store in admin's clients collection
+      final adminClientsRef = FirebaseFirestore.instance
+          .collection('admin')
+          .doc(adminUser.uid)
+          .collection('clients');
+
+      await adminClientsRef.doc(userId).set({
+        'userId': userId,
+        'name': userData['name'] ?? 'Unknown User',
+        'email': userData['email'] ?? '',
+        'phone': userData['phone'] ?? '',
+        'address': userData['address'] ?? '',
+        'createdAt': userData['createdAt'] ?? FieldValue.serverTimestamp(),
+        'syncedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // Store devices as subcollection
+      final devicesRef = adminClientsRef.doc(userId).collection('devices');
+      for (var device in devices) {
+        await devicesRef.doc(device['deviceId']).set(device);
+      }
+
+      // Reload clients
+      await _loadClientsFromAdmin();
+    } catch (e) {
+      print('Error syncing client: $e');
     }
   }
 
   void _addDevice(int clientIndex) async {
-    String? deviceName = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        final controller = TextEditingController();
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+    // Devices should be added from the user's actual devices collection
+    // This will sync automatically when we reload
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Devices are synced from the user\'s account. Please add devices from the user side.',
           ),
-          title: const Text('Add Device'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(labelText: 'Device Name'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8B0000),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: () => Navigator.pop(context, controller.text.trim()),
-              child: const Text('Add'),
-            ),
-          ],
-        );
-      },
-    );
-    if (deviceName != null && deviceName.isNotEmpty) {
-      setState(() {
-        clients[clientIndex]['devices'].add(deviceName);
-      });
+          backgroundColor: Color(0xFF8B0000),
+        ),
+      );
     }
+
+    // Refresh to get latest devices
+    await _syncUserToAdminClient(clients[clientIndex]['id']);
   }
 
   @override
@@ -156,42 +291,6 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
 
     return Scaffold(
       backgroundColor: lightGrey,
-      appBar: AppBar(
-        backgroundColor: primaryRed,
-        elevation: 0,
-        title: const Text(
-          'Client Management',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        automaticallyImplyLeading: true,
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            child: ElevatedButton.icon(
-              onPressed: _addClient,
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add Client'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: primaryRed,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
       body: Column(
         children: [
           // Header Stats
@@ -255,7 +354,9 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
           // Clients List
           Expanded(
             child:
-                clients.isEmpty
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : clients.isEmpty
                     ? _buildEmptyState()
                     : ListView.builder(
                       itemCount: clients.length,
@@ -301,22 +402,15 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Add your first client to get started',
+            'Clients are automatically added when users sign up',
             style: TextStyle(fontSize: 16, color: Colors.grey.shade500),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: _addClient,
-            icon: const Icon(Icons.add),
-            label: const Text('Add First Client'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryRed,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(25),
-              ),
-            ),
+          const SizedBox(height: 8),
+          Text(
+            'New users will appear here automatically',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -360,9 +454,20 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
           client['name'],
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
         ),
-        subtitle: Text(
-          '$deviceCount device${deviceCount != 1 ? 's' : ''}',
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$deviceCount device${deviceCount != 1 ? 's' : ''}',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+            ),
+            if (client['email'] != null &&
+                client['email'].toString().isNotEmpty)
+              Text(
+                client['email'],
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+              ),
+          ],
         ),
         trailing: Container(
           padding: const EdgeInsets.all(8),
@@ -458,19 +563,25 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
           const SizedBox(height: 8),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20),
-            child: ElevatedButton.icon(
-              onPressed: () => _addDevice(index),
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Add Device'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryRed,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _addDevice(index),
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Refresh Devices'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryRed,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
+              ],
             ),
           ),
         ],

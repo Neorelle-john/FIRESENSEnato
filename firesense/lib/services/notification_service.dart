@@ -48,7 +48,8 @@ class NotificationService {
 
     await _localNotifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(channel);
 
     // Request notification permissions
@@ -88,14 +89,14 @@ class NotificationService {
     }
 
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
+      final doc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
 
       if (doc.exists && doc.data() != null) {
-        _notificationsEnabled =
-            doc.data()?['notificationsEnabled'] ?? true;
+        _notificationsEnabled = doc.data()?['notificationsEnabled'] ?? true;
       } else {
         // Default to enabled if not set
         _notificationsEnabled = true;
@@ -113,13 +114,9 @@ class NotificationService {
     if (user == null) return;
 
     try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .set(
-        {'notificationsEnabled': enabled},
-        SetOptions(merge: true),
-      );
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'notificationsEnabled': enabled,
+      }, SetOptions(merge: true));
       _notificationsEnabled = enabled;
     } catch (e) {
       print('Error saving notification preference: $e');
@@ -146,6 +143,7 @@ class NotificationService {
     required String title,
     required String body,
     String? deviceId,
+    bool? isAdmin, // Optional parameter to explicitly indicate admin
   }) async {
     if (!_notificationsEnabled) {
       print('Notifications are disabled, skipping notification');
@@ -159,17 +157,54 @@ class NotificationService {
       return;
     }
 
-    const AndroidNotificationDetails androidDetails =
+    // Determine if user is admin (check if not explicitly provided)
+    bool userIsAdmin = isAdmin ?? false;
+    if (!userIsAdmin) {
+      final user = FirebaseAuth.instance.currentUser;
+      userIsAdmin = user?.email == 'admin@gmail.com';
+    }
+
+    // Customize notification based on user type
+    String finalTitle = title;
+    String finalBody = body;
+
+    if (userIsAdmin) {
+      // Admin-specific notification
+      finalTitle = 'Alert Detected';
+      // Extract device name from body if available, otherwise use generic message
+      if (body.contains('Fire detected by')) {
+        final deviceNameMatch = RegExp(
+          r'Fire detected by (.+?)\.',
+        ).firstMatch(body);
+        final deviceName = deviceNameMatch?.group(1) ?? 'device';
+        finalBody = 'Alert from $deviceName. Tap to view details.';
+      } else if (body.contains('detected by')) {
+        final deviceNameMatch = RegExp(r'detected by (.+?)\.').firstMatch(body);
+        final deviceName = deviceNameMatch?.group(1) ?? 'device';
+        finalBody = 'Alert from $deviceName. Tap to view details.';
+      } else {
+        finalBody = 'New alert requires your attention. Tap to view details.';
+      }
+    }
+    // For regular users, use the provided title and body as-is
+
+    // Use BigTextStyleInformation for Android to show full message in expandable notifications
+    final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
-      'fire_alarm_channel',
-      'Fire Alarms',
-      channelDescription: 'Notifications for fire alarm alerts',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: true,
-      enableVibration: true,
-      playSound: true,
-    );
+          'fire_alarm_channel',
+          'Fire Alarms',
+          channelDescription: 'Notifications for fire alarm alerts',
+          importance: Importance.max,
+          priority: Priority.high,
+          showWhen: true,
+          enableVibration: true,
+          playSound: true,
+          styleInformation: BigTextStyleInformation(
+            finalBody,
+            contentTitle: finalTitle,
+            htmlFormatBigText: false,
+          ),
+        );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
       presentAlert: true,
@@ -177,15 +212,15 @@ class NotificationService {
       presentSound: true,
     );
 
-    const NotificationDetails details = NotificationDetails(
+    final NotificationDetails details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
 
     await _localNotifications.show(
       deviceId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
-      title,
-      body,
+      finalTitle,
+      finalBody,
       details,
       payload: deviceId,
     );
@@ -219,4 +254,3 @@ class NotificationService {
     await _loadNotificationPreference();
   }
 }
-

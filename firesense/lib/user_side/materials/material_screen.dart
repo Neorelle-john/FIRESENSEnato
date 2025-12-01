@@ -186,45 +186,91 @@ class _MaterialScreenState extends State<MaterialScreen> {
                     icon: Icons.warning_amber_outlined,
                   ),
                 ] else ...[
-                  // Enhanced Secondary Resources
-                  _buildResourceCard(
-                    imageUrl:
-                        'https://plus.unsplash.com/premium_photo-1661490162121-41df314e1ef1?q=80&w=932&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
-                    title: 'Fire Prevention',
-                    description:
-                        'Essential fire safety tips and prevention measures',
-                    category: 'Safety Guide',
-                    isInteractive: true,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const FirePreventionScreen(),
-                        ),
-                      );
+                  // Enhanced Secondary Resources - wrapped in error boundary
+                  Builder(
+                    builder: (context) {
+                      try {
+                        return Column(
+                          children: [
+                            _buildResourceCard(
+                              imageUrl: '', // Not used anymore
+                              title: 'Fire Prevention',
+                              description:
+                                  'Essential fire safety tips and prevention measures',
+                              category: 'Safety Guide',
+                              isInteractive: true,
+                              onTap: () {
+                                if (mounted) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) =>
+                                              const FirePreventionScreen(),
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: Icons.local_fire_department,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildResourceCard(
+                              imageUrl: '', // Not used anymore
+                              title: 'Fire Safety Checklist',
+                              description:
+                                  'A comprehensive guide to check for your safety',
+                              category: 'Checklist',
+                              isInteractive: true,
+                              onTap: () {
+                                if (mounted) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) =>
+                                              const FireChecklistScreen(),
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: Icons.checklist,
+                              color: Colors.orange,
+                            ),
+                          ],
+                        );
+                      } catch (e, stackTrace) {
+                        // Catch any unexpected errors in secondary resources
+                        print('Error building secondary resources: $e');
+                        print('Stack trace: $stackTrace');
+                        return Container(
+                          padding: const EdgeInsets.all(20),
+                          margin: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: Colors.grey.shade400,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Unable to load resources',
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
                     },
-                    icon: Icons.local_fire_department,
-                    color: Colors.red,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildResourceCard(
-                    imageUrl:
-                        'https://media.istockphoto.com/id/2174665559/nl/foto/checking-fire-equipment-in-a-fire-truck.jpg?s=612x612&w=is&k=20&c=1WySJyeHoxnaZZXHO6-Ci4tqdlW1cDuUJED3BMzw00M=',
-                    title: 'Fire Safety Checklist',
-                    description:
-                        'A comprehensive guide to check for your safety',
-                    category: 'Checklist',
-                    isInteractive: true,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const FireChecklistScreen(),
-                        ),
-                      );
-                    },
-                    icon: Icons.checklist,
-                    color: Colors.orange,
                   ),
                 ],
                 const SizedBox(
@@ -569,10 +615,7 @@ class _MaterialScreenState extends State<MaterialScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color:
-                isInteractive
-                    ? color.withOpacity(0.15)
-                    : Colors.black.withOpacity(0.08),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -582,42 +625,26 @@ class _MaterialScreenState extends State<MaterialScreen> {
             offset: const Offset(0, 2),
           ),
         ],
-        border:
-            isInteractive
-                ? Border.all(color: color.withOpacity(0.2), width: 1)
-                : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-                child: Image.network(
-                  imageUrl,
-                  height: 120,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with category
+            Row(
+              children: [
+                Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: color,
+                    color: primaryRed,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: color.withOpacity(0.3),
+                        color: primaryRed.withOpacity(0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -639,99 +666,66 @@ class _MaterialScreenState extends State<MaterialScreen> {
                     ],
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Title
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Color(0xFF1E1E1E),
+                height: 1.3,
               ),
-              if (isInteractive)
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: primaryRed,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: primaryRed.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.touch_app,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            const SizedBox(height: 8),
+
+            // Description (as subtitle)
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 15,
+                color: primaryRed,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Read More section
+            Row(
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Color(0xFF1E1E1E),
-                    height: 1.3,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                    height: 1.4,
+                  decoration: BoxDecoration(
+                    color: primaryRed.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.visibility, color: primaryRed, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        isInteractive ? 'Tap to read more' : 'Coming Soon',
+                        style: TextStyle(
+                          color: primaryRed,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                      decoration: BoxDecoration(
-                        color:
-                            isInteractive
-                                ? primaryRed.withOpacity(0.1)
-                                : color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isInteractive
-                                ? Icons.touch_app
-                                : Icons.info_outline,
-                            color: isInteractive ? primaryRed : color,
-                            size: 14,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isInteractive ? 'Tap to read more' : 'Coming Soon',
-                            style: TextStyle(
-                              color: isInteractive ? primaryRed : color,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 

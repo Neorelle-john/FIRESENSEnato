@@ -6,12 +6,14 @@ class AlarmOverlay extends StatelessWidget {
   final String? deviceName;
   final String? deviceId;
   final VoidCallback onClose;
+  final VoidCallback? onOpenAlert; // Optional callback for admin side
 
   const AlarmOverlay({
     super.key,
     this.deviceName,
     this.deviceId,
     required this.onClose,
+    this.onOpenAlert,
   });
 
   String _getAlarmMessage() {
@@ -145,34 +147,40 @@ class AlarmOverlay extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    // Acknowledge Button
+                    // Button - either "Open Alert" (admin) or "Acknowledge" (user)
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () async {
-                          // Set Alarm to false in Realtime Database
-                          if (deviceId != null && deviceId!.isNotEmpty) {
-                            try {
-                              final dbRef = FirebaseDatabase.instance.ref();
-                              // Add timeout to prevent hanging
-                              await dbRef
-                                  .child('Devices/$deviceId/Alarm')
-                                  .set(false)
-                                  .timeout(const Duration(seconds: 5));
-                            } on TimeoutException catch (e) {
-                              print(
-                                'Alarm acknowledge: Database write timeout: $e',
-                              );
-                              // Continue to close overlay even if database write fails
-                            } catch (e) {
-                              print(
-                                'Alarm acknowledge: Error setting alarm to false: $e',
-                              );
-                              // Continue to close overlay even if database write fails
+                          if (onOpenAlert != null) {
+                            // Admin side: Open alert details
+                            onOpenAlert!();
+                            onClose();
+                          } else {
+                            // User side: Set Alarm to false in Realtime Database
+                            if (deviceId != null && deviceId!.isNotEmpty) {
+                              try {
+                                final dbRef = FirebaseDatabase.instance.ref();
+                                // Add timeout to prevent hanging
+                                await dbRef
+                                    .child('Devices/$deviceId/Alarm')
+                                    .set(false)
+                                    .timeout(const Duration(seconds: 5));
+                              } on TimeoutException catch (e) {
+                                print(
+                                  'Alarm acknowledge: Database write timeout: $e',
+                                );
+                                // Continue to close overlay even if database write fails
+                              } catch (e) {
+                                print(
+                                  'Alarm acknowledge: Error setting alarm to false: $e',
+                                );
+                                // Continue to close overlay even if database write fails
+                              }
                             }
+                            // Always close the overlay
+                            onClose();
                           }
-                          // Always close the overlay
-                          onClose();
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryRed,
@@ -186,9 +194,9 @@ class AlarmOverlay extends StatelessWidget {
                           ),
                           elevation: 4,
                         ),
-                        child: const Text(
-                          "Acknowledge",
-                          style: TextStyle(
+                        child: Text(
+                          onOpenAlert != null ? "Open Alert" : "Acknowledge",
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 1,

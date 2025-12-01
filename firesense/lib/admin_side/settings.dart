@@ -1,6 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../credentials/signin_screen.dart';
+import 'package:firesense/services/notification_service.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
   const AdminSettingsScreen({super.key});
@@ -13,55 +12,75 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   bool _notificationsEnabled = true;
   bool _autoAlertsEnabled = true;
   bool _locationTrackingEnabled = true;
+  bool _isLoadingNotificationPref = true;
 
-  void _logout(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (context) => const SignInScreen()),
-      (Route<dynamic> route) => false,
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationPreference();
   }
 
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Row(
-            children: [
-              Icon(Icons.logout, color: Color(0xFF8B0000)),
-              SizedBox(width: 12),
-              Text('Log Out'),
-            ],
-          ),
-          content: const Text('Are you sure you want to log out?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+  /// Load notification preference from NotificationService
+  Future<void> _loadNotificationPreference() async {
+    try {
+      // Refresh preference from Firestore
+      await NotificationService().refreshPreference();
+
+      if (mounted) {
+        setState(() {
+          _notificationsEnabled = NotificationService().areNotificationsEnabled;
+          _isLoadingNotificationPref = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading notification preference: $e');
+      if (mounted) {
+        setState(() {
+          _notificationsEnabled = true; // Default to enabled on error
+          _isLoadingNotificationPref = false;
+        });
+      }
+    }
+  }
+
+  /// Toggle notifications and save to Firestore
+  Future<void> _toggleNotifications(bool value) async {
+    setState(() {
+      _notificationsEnabled = value;
+    });
+
+    try {
+      await NotificationService().setNotificationsEnabled(value);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              value
+                  ? 'Push notifications enabled'
+                  : 'Push notifications disabled',
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _logout(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8B0000),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text('Log Out'),
-            ),
-          ],
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF8B0000),
+          ),
         );
-      },
-    );
+      }
+    } catch (e) {
+      print('Error saving notification preference: $e');
+      // Revert on error
+      if (mounted) {
+        setState(() {
+          _notificationsEnabled = !value;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update notification settings'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -172,13 +191,15 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                   _buildSwitchTile(
                     icon: Icons.notifications_outlined,
                     title: 'Push Notifications',
-                    subtitle: 'Receive alerts and system updates',
+                    subtitle:
+                        _isLoadingNotificationPref
+                            ? 'Loading...'
+                            : 'Receive alerts and system updates',
                     value: _notificationsEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _notificationsEnabled = value;
-                      });
-                    },
+                    onChanged:
+                        _isLoadingNotificationPref
+                            ? (_) {}
+                            : (value) => _toggleNotifications(value),
                   ),
                   _buildDivider(),
                   _buildSwitchTile(
@@ -270,55 +291,6 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                     onTap: () {},
                   ),
                 ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Account Actions Section
-            _buildSectionHeader('Account Actions'),
-
-            Container(
-              decoration: BoxDecoration(
-                color: cardWhite,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Container(
-                width: double.infinity,
-                height: 56,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryRed.withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton.icon(
-                  onPressed: () => _showLogoutDialog(context),
-                  icon: const Icon(Icons.logout, size: 20),
-                  label: const Text(
-                    'Sign Out',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryRed,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                ),
               ),
             ),
 

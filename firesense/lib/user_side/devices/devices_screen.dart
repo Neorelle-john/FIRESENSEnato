@@ -407,8 +407,10 @@ class _DeviceCardWidget extends StatefulWidget {
 
 class _DeviceCardWidgetState extends State<_DeviceCardWidget> {
   StreamSubscription<DatabaseEvent>? _statusSubscription;
+  StreamSubscription<DocumentSnapshot>? _alarmTypeSubscription;
   Timer? _onlineCheckTimer;
   bool _isOnline = false;
+  String? _alarmType; // 'normal', 'smoke', 'fire', or null
   DateTime? _lastUpdateTime;
   bool _hasReceivedInitialData = false;
 
@@ -416,43 +418,68 @@ class _DeviceCardWidgetState extends State<_DeviceCardWidget> {
   void initState() {
     super.initState();
     _startListening();
+    _startAlarmTypeListening();
     _startOnlineCheckTimer();
   }
 
   void _startListening() {
     final dbRef = FirebaseDatabase.instance.ref();
-    _statusSubscription = dbRef
-        .child('Devices/${widget.deviceId}')
-        .onValue
-        .listen((event) {
-          if (mounted) {
-            final data = event.snapshot.value;
-            
-            if (data != null) {
-              if (_hasReceivedInitialData) {
-                // This is a new update after initial load - device is online
-                _lastUpdateTime = DateTime.now();
-                setState(() {
-                  _isOnline = true;
-                });
-              } else {
-                // First time seeing data - could be stale from before app restart
-                // Don't set timestamp yet, wait for next update to confirm it's fresh
-                _hasReceivedInitialData = true;
-                // Don't set _lastUpdateTime or _isOnline yet
-                // Will be set when next update arrives (if device is actually online)
-                setState(() {
-                  _isOnline = false;
-                });
-              }
-            } else {
-              // Data is null, definitely offline
-              _hasReceivedInitialData = false;
-              setState(() {
-                _isOnline = false;
-                _lastUpdateTime = null;
-              });
-            }
+    _statusSubscription = dbRef.child('Devices/${widget.deviceId}').onValue.listen((
+      event,
+    ) {
+      if (mounted) {
+        final data = event.snapshot.value;
+
+        if (data != null) {
+          if (_hasReceivedInitialData) {
+            // This is a new update after initial load - device is online
+            _lastUpdateTime = DateTime.now();
+            setState(() {
+              _isOnline = true;
+            });
+          } else {
+            // First time seeing data - could be stale from before app restart
+            // Don't set timestamp yet, wait for next update to confirm it's fresh
+            _hasReceivedInitialData = true;
+            // Don't set _lastUpdateTime or _isOnline yet
+            // Will be set when next update arrives (if device is actually online)
+            setState(() {
+              _isOnline = false;
+            });
+          }
+        } else {
+          // Data is null, definitely offline
+          _hasReceivedInitialData = false;
+          setState(() {
+            _isOnline = false;
+            _lastUpdateTime = null;
+          });
+        }
+      }
+    });
+  }
+
+  void _startAlarmTypeListening() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _alarmTypeSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('devices')
+        .doc(widget.deviceId)
+        .snapshots()
+        .listen((snapshot) {
+          if (mounted && snapshot.exists) {
+            final data = snapshot.data();
+            final alarmType = data?['alarmType'] as String?;
+            setState(() {
+              _alarmType = alarmType;
+            });
+          } else if (mounted) {
+            setState(() {
+              _alarmType = null;
+            });
           }
         });
   }
@@ -466,8 +493,7 @@ class _DeviceCardWidgetState extends State<_DeviceCardWidget> {
       }
 
       if (_lastUpdateTime != null) {
-        final timeSinceLastUpdate =
-            DateTime.now().difference(_lastUpdateTime!);
+        final timeSinceLastUpdate = DateTime.now().difference(_lastUpdateTime!);
         // Consider offline if no update in last 5 minutes (300 seconds)
         // This prevents constant status changes from online to offline
         final shouldBeOnline = timeSinceLastUpdate.inSeconds < 300;
@@ -489,8 +515,34 @@ class _DeviceCardWidgetState extends State<_DeviceCardWidget> {
   @override
   void dispose() {
     _statusSubscription?.cancel();
+    _alarmTypeSubscription?.cancel();
     _onlineCheckTimer?.cancel();
     super.dispose();
+  }
+
+  Color _getStatusColor() {
+    if (_alarmType == 'fire') {
+      return Colors.red;
+    } else if (_alarmType == 'smoke') {
+      return Colors.orange; // Warning yellow/orange
+    } else if (_alarmType == 'normal') {
+      return Colors.green;
+    } else {
+      // Default to grey if no alarmType
+      return Colors.grey;
+    }
+  }
+
+  String _getStatusText() {
+    if (_alarmType == 'fire') {
+      return 'Fire';
+    } else if (_alarmType == 'smoke') {
+      return 'Smoke';
+    } else if (_alarmType == 'normal') {
+      return 'Normal';
+    } else {
+      return 'Unknown';
+    }
   }
 
   String _formatDate(DateTime date) {
@@ -578,41 +630,83 @@ class _DeviceCardWidgetState extends State<_DeviceCardWidget> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isOnline
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.grey.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: isOnline ? Colors.green : Colors.grey,
-                                shape: BoxShape.circle,
-                              ),
+                      Row(
+                        children: [
+                          // Alarm Type Status Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 5,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              isOnline ? 'Online' : 'Offline',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: isOnline
-                                    ? Colors.green.shade700
-                                    : Colors.grey.shade700,
-                              ),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor().withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                          ],
-                        ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    color: _getStatusColor(),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _getStatusText(),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: _getStatusColor(),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Online/Offline Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  isOnline
+                                      ? Colors.green.withOpacity(0.1)
+                                      : Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: BoxDecoration(
+                                    color:
+                                        isOnline ? Colors.green : Colors.grey,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  isOnline ? 'Online' : 'Offline',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        isOnline
+                                            ? Colors.green.shade700
+                                            : Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       if (widget.createdAt != null) ...[
                         const SizedBox(height: 6),

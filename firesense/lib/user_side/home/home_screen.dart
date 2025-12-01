@@ -1,15 +1,17 @@
 import 'package:firesense/user_side/devices/devices_screen.dart';
+import 'package:firesense/user_side/devices/device_detail_screen.dart';
 import 'package:firesense/user_side/materials/material_screen.dart';
 import 'package:firesense/user_side/emergency/emergency_dial_screen.dart';
 import 'package:firesense/user_side/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:firesense/user_side/contacts/add_contact_screen.dart';
 import '../contacts/contacts_list_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firesense/services/alarm_widget.dart';
 import 'package:firesense/services/sensor_alarm_services.dart';
+import 'package:firesense/services/fire_prediction_services.dart';
 import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
@@ -34,6 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // Initialize global alarm monitoring
     SensorAlarmService().startListeningToAllUserDevices();
 
+    // Initialize fire prediction service and start listening to all user devices
+    _initializeFirePredictionService();
+
     // Listen to alarm stream
     _alarmSubscription = SensorAlarmService().alarmStream.listen(
       (alarmData) {
@@ -52,9 +57,24 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Initialize fire prediction service and start listening to all user devices
+  Future<void> _initializeFirePredictionService() async {
+    try {
+      print('HomeScreen: Initializing fire prediction service...');
+      await FirePredictionService().startListeningToAllUserDevices();
+      print('HomeScreen: Fire prediction service initialized successfully');
+    } catch (e, stackTrace) {
+      print('HomeScreen: Error initializing fire prediction service: $e');
+      print('Stack trace: $stackTrace');
+      // Don't crash the app if prediction service fails to initialize
+    }
+  }
+
   @override
   void dispose() {
     _alarmSubscription?.cancel();
+    // Stop fire prediction service when screen is disposed
+    FirePredictionService().stopAllRealtimePredictions();
     super.dispose();
   }
 
@@ -143,6 +163,94 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildDevicesCarousel() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const SizedBox.shrink();
+    }
+
+    final devicesRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('devices');
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: devicesRef.orderBy('created_at', descending: true).snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SizedBox(
+            height: 140,
+            child: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  const Color(0xFF8B0000),
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Container(
+            height: 140,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.devices_outlined,
+                    size: 50,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No devices yet',
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        final devices = snapshot.data!.docs;
+        final deviceCount = devices.length;
+
+        return SizedBox(
+          height: 140,
+          child: PageView.builder(
+            itemCount: deviceCount,
+            controller: PageController(viewportFraction: 1.0),
+            itemBuilder: (context, index) {
+              final deviceDoc = devices[index];
+              final deviceData = deviceDoc.data() as Map<String, dynamic>;
+              final deviceId = deviceData['deviceId'] ?? deviceDoc.id;
+              final deviceName = deviceData['name'] ?? 'Unnamed Device';
+
+              return _DeviceStatusCard(
+                deviceId: deviceId,
+                deviceName: deviceName,
+                primaryRed: const Color(0xFF8B0000),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color primaryRed = const Color(0xFF8B0000);
@@ -178,35 +286,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
-              IconButton(
-                icon: const Icon(Icons.person_add, color: Colors.black87),
-                onPressed: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => AddContactScreen(
-                            onContactsChanged: refreshContacts,
-                          ),
-                    ),
-                  );
-                  refreshContacts(); // Refresh contacts after adding
-                },
-              ),
             ],
             automaticallyImplyLeading: false,
           ),
           body: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   // Hero Header Card
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: primaryRed,
                       borderRadius: BorderRadius.circular(20),
@@ -233,38 +326,82 @@ class _HomeScreenState extends State<HomeScreen> {
                                 'Welcome to FireSense',
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 18,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              SizedBox(height: 6),
+                              SizedBox(height: 8),
                               Text(
-                                'Quickly reach your emergency contacts and hotlines.',
-                                style: TextStyle(color: Colors.white70),
+                                'An IoT-Based Fire Detection application with Automated Alarm and Emergency SMS.',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
                         const Icon(
                           Icons.local_fire_department,
                           color: Colors.white,
-                          size: 48,
+                          size: 52,
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 24),
 
+                  // Devices Section Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'My Devices',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DevicesScreen(),
+                            ),
+                          );
+                        },
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        child: const Text(
+                          'View all',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF8B0000),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  // Devices Carousel
+                  _buildDevicesCarousel(),
+                  const SizedBox(height: 28),
+
                   // Contacts Section Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        'Contacts',
+                        'Emergency Contacts',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                          fontSize: 20,
+                          color: Colors.black87,
                         ),
                       ),
                       TextButton(
@@ -280,11 +417,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           );
                           refreshContacts(); // Refresh contacts after returning
                         },
-                        child: const Text('View all'),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        child: const Text(
+                          'View all',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Color(0xFF8B0000),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   // Contacts List (Firebase) - Limited to first 3
                   FutureBuilder<List<DocumentSnapshot>>(
                     future: _contactsFuture,
@@ -906,6 +1053,507 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
       ],
+    );
+  }
+}
+
+/// Widget that displays a device card with status, online/offline, and view button
+class _DeviceStatusCard extends StatefulWidget {
+  final String deviceId;
+  final String deviceName;
+  final Color primaryRed;
+
+  const _DeviceStatusCard({
+    required this.deviceId,
+    required this.deviceName,
+    required this.primaryRed,
+  });
+
+  @override
+  State<_DeviceStatusCard> createState() => _DeviceStatusCardState();
+}
+
+class _DeviceStatusCardState extends State<_DeviceStatusCard> {
+  StreamSubscription<DatabaseEvent>? _statusSubscription;
+  StreamSubscription<DocumentSnapshot>? _alarmTypeSubscription;
+  Timer? _onlineCheckTimer;
+  bool _isOnline = false;
+  String? _alarmType; // 'normal', 'smoke', 'fire', or null
+  bool _testAlarm = false;
+  DateTime? _lastUpdateTime;
+  bool _hasReceivedInitialData = false;
+  final dbRef = FirebaseDatabase.instance.ref();
+
+  @override
+  void initState() {
+    super.initState();
+    _startListening();
+    _startAlarmTypeListening();
+    _startOnlineCheckTimer();
+  }
+
+  void _startListening() {
+    final dbRef = FirebaseDatabase.instance.ref();
+    _statusSubscription = dbRef
+        .child('Devices/${widget.deviceId}')
+        .onValue
+        .listen((event) {
+          if (mounted) {
+            final data = event.snapshot.value;
+
+            if (data != null && data is Map) {
+              // Check test alarm status
+              final testAlarm = data['TestAlarm'] == true;
+
+              if (_hasReceivedInitialData) {
+                // This is a new update after initial load - device is online
+                _lastUpdateTime = DateTime.now();
+                setState(() {
+                  _isOnline = true;
+                  _testAlarm = testAlarm;
+                });
+              } else {
+                // First time seeing data
+                _hasReceivedInitialData = true;
+                setState(() {
+                  _isOnline = false; // Wait for next update to confirm online
+                  _testAlarm = testAlarm;
+                });
+              }
+            } else {
+              // Data is null, definitely offline
+              _hasReceivedInitialData = false;
+              setState(() {
+                _isOnline = false;
+                _testAlarm = false;
+                _lastUpdateTime = null;
+              });
+            }
+          }
+        });
+  }
+
+  void _startAlarmTypeListening() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _alarmTypeSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('devices')
+        .doc(widget.deviceId)
+        .snapshots()
+        .listen((snapshot) {
+          if (mounted && snapshot.exists) {
+            final data = snapshot.data();
+            final alarmType = data?['alarmType'] as String?;
+            setState(() {
+              _alarmType = alarmType;
+            });
+          } else if (mounted) {
+            setState(() {
+              _alarmType = null;
+            });
+          }
+        });
+  }
+
+  void _startOnlineCheckTimer() {
+    // Check every 2 seconds if device is still online
+    _onlineCheckTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (_lastUpdateTime != null) {
+        final timeSinceLastUpdate = DateTime.now().difference(_lastUpdateTime!);
+        // Consider offline if no update in last 5 minutes (300 seconds)
+        final shouldBeOnline = timeSinceLastUpdate.inSeconds < 300;
+
+        if (_isOnline != shouldBeOnline) {
+          setState(() {
+            _isOnline = shouldBeOnline;
+          });
+        }
+      } else if (_isOnline) {
+        // No last update time but was online, mark as offline
+        setState(() {
+          _isOnline = false;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _statusSubscription?.cancel();
+    _alarmTypeSubscription?.cancel();
+    _onlineCheckTimer?.cancel();
+    super.dispose();
+  }
+
+  String _getDeviceStatus() {
+    if (_alarmType == 'fire') {
+      return 'Fire';
+    } else if (_alarmType == 'smoke') {
+      return 'Smoke';
+    } else if (_alarmType == 'normal') {
+      return 'Normal';
+    } else {
+      // No alarmType set yet or device offline
+      return 'Unknown';
+    }
+  }
+
+  Color _getStatusColor() {
+    if (_alarmType == 'fire') {
+      return Colors.red;
+    } else if (_alarmType == 'smoke') {
+      return Colors.orange; // Warning yellow/orange
+    } else if (_alarmType == 'normal') {
+      return Colors.green;
+    } else {
+      // Default to grey if no alarmType
+      return Colors.grey;
+    }
+  }
+
+  Future<void> _toggleTestAlarm() async {
+    try {
+      final newValue = !_testAlarm;
+      await dbRef
+          .child('Devices/${widget.deviceId}/TestAlarm')
+          .set(newValue)
+          .timeout(const Duration(seconds: 5));
+
+      if (mounted) {
+        setState(() {
+          _testAlarm = newValue;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              newValue ? 'Test alarm activated' : 'Test alarm deactivated',
+            ),
+            duration: const Duration(seconds: 2),
+            backgroundColor: widget.primaryRed,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _disconnectDevice() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Disconnect Device'),
+            content: Text(
+              'Are you sure you want to disconnect "${widget.deviceName}"?\n\n'
+              'This will remove the device from your account.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Disconnect'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('devices')
+          .doc(widget.deviceId)
+          .delete();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Device disconnected successfully'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _getDeviceStatus();
+    final statusColor = _getStatusColor();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // First Row: Device Icon, Device Name, Three-dot Menu
+            Row(
+              children: [
+                // Device Icon
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: widget.primaryRed.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.sensors,
+                    color: widget.primaryRed,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Device Name
+                Expanded(
+                  child: Text(
+                    widget.deviceName,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                // Three-dot menu
+                Theme(
+                  data: Theme.of(context).copyWith(
+                    popupMenuTheme: const PopupMenuThemeData(
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  child: PopupMenuButton<String>(
+                    icon: const Icon(
+                      Icons.more_vert,
+                      color: Colors.black54,
+                      size: 20,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onSelected: (value) {
+                      if (value == 'test_alarm') {
+                        _toggleTestAlarm();
+                      } else if (value == 'disconnect') {
+                        _disconnectDevice();
+                      }
+                    },
+                    itemBuilder:
+                        (context) => [
+                          PopupMenuItem(
+                            value: 'test_alarm',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _testAlarm
+                                      ? Icons.warning_amber_rounded
+                                      : Icons.warning_outlined,
+                                  color:
+                                      _testAlarm
+                                          ? Colors.orange
+                                          : Colors.black87,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  _testAlarm
+                                      ? 'Deactivate Test Alarm'
+                                      : 'Test Alarm',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuDivider(),
+                          const PopupMenuItem(
+                            value: 'disconnect',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.link_off,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Disconnect Device',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            // Second Row: Device Status Badge and Button
+            Row(
+              children: [
+                // Status Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        status,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Online/Offline Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        _isOnline
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: _isOnline ? Colors.green : Colors.grey,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        _isOnline ? 'Online' : 'Offline',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              _isOnline
+                                  ? Colors.green.shade700
+                                  : Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                // View Button
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) =>
+                                DeviceDetailsScreen(deviceId: widget.deviceId),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: widget.primaryRed,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    minimumSize: const Size(0, 32),
+                    elevation: 0,
+                  ),
+                  child: const Text('View', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

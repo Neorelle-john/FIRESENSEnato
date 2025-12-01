@@ -20,10 +20,13 @@ class DeviceDetailsScreen extends StatefulWidget {
 class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
   final dbRef = FirebaseDatabase.instance.ref();
   StreamSubscription? deviceListener;
+  StreamSubscription<DocumentSnapshot>? _alarmTypeSubscription;
   Map<String, dynamic> sensorData = {};
   String deviceName = "Unknown Device";
   double? deviceLat;
   double? deviceLng;
+  String? deviceAddress;
+  String? _alarmType; // 'normal', 'smoke', 'fire', or null
 
   bool _showAlarm = false;
   bool _testAlarm = false;
@@ -45,6 +48,9 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
 
     // Fetch device data from Firestore
     _loadDeviceData();
+
+    // Start listening to alarmType from Firestore
+    _startAlarmTypeListening();
 
     // FIXED: Save listener to deviceListener so we can cancel it
     deviceListener = dbRef.child('Devices/${widget.deviceId}').onValue.listen((
@@ -89,7 +95,59 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
         deviceName = data['name'] ?? "Unknown Device";
         deviceLat = data['lat']?.toDouble();
         deviceLng = data['lng']?.toDouble();
+        deviceAddress = data['address'] as String?;
+        _alarmType = data['alarmType'] as String?;
       });
+    }
+  }
+
+  void _startAlarmTypeListening() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _alarmTypeSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('devices')
+        .doc(widget.deviceId)
+        .snapshots()
+        .listen((snapshot) {
+          if (mounted && snapshot.exists) {
+            final data = snapshot.data();
+            final alarmType = data?['alarmType'] as String?;
+            setState(() {
+              _alarmType = alarmType;
+            });
+          } else if (mounted) {
+            setState(() {
+              _alarmType = null;
+            });
+          }
+        });
+  }
+
+  Color _getStatusColor() {
+    if (_alarmType == 'fire') {
+      return Colors.red;
+    } else if (_alarmType == 'smoke') {
+      return Colors.orange; // Warning yellow/orange
+    } else if (_alarmType == 'normal') {
+      return Colors.green;
+    } else {
+      // Default to grey if no alarmType
+      return Colors.grey;
+    }
+  }
+
+  String _getStatusText() {
+    if (_alarmType == 'fire') {
+      return 'Fire';
+    } else if (_alarmType == 'smoke') {
+      return 'Smoke';
+    } else if (_alarmType == 'normal') {
+      return 'Normal';
+    } else {
+      return 'Unknown';
     }
   }
 
@@ -286,6 +344,7 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
   void dispose() {
     // FIXED: Properly cancel listener
     deviceListener?.cancel();
+    _alarmTypeSubscription?.cancel();
     SensorAlarmService().stopListening();
     super.dispose();
   }
@@ -375,7 +434,10 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
             children: [
               Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   children: [
                     // DEVICE HEADER
                     Container(
@@ -394,37 +456,128 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            deviceName,
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
+                          // Device Name and ID
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      deviceName,
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "ID: ${widget.deviceId}",
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    // Alarm Type Status Badge
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 9,
+                                        vertical: 5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _getStatusColor().withOpacity(
+                                          0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 7,
+                                            height: 7,
+                                            decoration: BoxDecoration(
+                                              color: _getStatusColor(),
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            _getStatusText(),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: _getStatusColor(),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            "Device ID: ${widget.deviceId}",
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Colors.black54,
-                            ),
-                          ),
+
                           if (deviceLat != null && deviceLng != null) ...[
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 20),
                             const Text(
-                              'Device Location',
+                              'Location',
                               style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
                                 color: Colors.black87,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            if (deviceAddress != null &&
+                                deviceAddress!.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF8B0000,
+                                  ).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFF8B0000,
+                                    ).withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.location_on,
+                                      color: Color(0xFF8B0000),
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        deviceAddress!,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          color: Colors.black87,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 14),
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(16),
                               child: SizedBox(
-                                height: 180,
+                                height: 250,
                                 width: double.infinity,
                                 child: GoogleMap(
                                   key: ValueKey(
@@ -456,81 +609,36 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
                                 ),
                               ),
                             ),
-                          ],
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // SENSOR VALUES (debug)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: cardWhite,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 6,
-                            offset: Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Device Information",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-
-                          sensorData.isEmpty
-                              ? const Padding(
-                                padding: EdgeInsets.all(8.0),
-                                child: Center(
-                                  child: Text(
-                                    "No sensor data available yet",
-                                    style: TextStyle(color: Colors.black54),
-                                  ),
-                                ),
-                              )
-                              : Column(
-                                children:
-                                    sensorData.entries.map((entry) {
-                                      return Card(
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            14,
-                                          ),
-                                        ),
-                                        margin: const EdgeInsets.only(
-                                          bottom: 10,
-                                        ),
-                                        elevation: 2,
-                                        child: ListTile(
-                                          title: Text(
-                                            entry.key,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          trailing: Text(
-                                            entry.value.toString(),
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              color: Colors.black87,
-                                            ),
-                                          ),
-                                        ),
-                                      );
-                                    }).toList(),
+                          ] else ...[
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.all(40),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(16),
                               ),
+                              child: const Center(
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      Icons.location_off,
+                                      size: 48,
+                                      color: Colors.black38,
+                                    ),
+                                    SizedBox(height: 12),
+                                    Text(
+                                      'Location not set',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.black54,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -543,13 +651,13 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
                   color: Colors.white,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 8,
                       offset: const Offset(0, -2),
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 child: SafeArea(
                   child: SizedBox(
                     width: double.infinity,
@@ -573,7 +681,7 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        elevation: 2,
+                        elevation: 0,
                       ),
                     ),
                   ),

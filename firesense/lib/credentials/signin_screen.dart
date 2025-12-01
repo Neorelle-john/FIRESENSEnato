@@ -40,10 +40,7 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await _auth.signInWithEmailAndPassword(
-        email: email, 
-        password: password,
-      );
+      await _auth.signInWithEmailAndPassword(email: email, password: password);
       if (!mounted) return;
 
       setState(() => _isLoading = false);
@@ -59,7 +56,7 @@ class _SignInScreenState extends State<SignInScreen> {
         if (navigator.canPop()) {
           navigator.pop();
         }
-        
+
         if (email == 'admin@gmail.com') {
           Navigator.pushAndRemoveUntil(
             context,
@@ -78,39 +75,63 @@ class _SignInScreenState extends State<SignInScreen> {
       // Catch PlatformException FIRST (before FirebaseAuthException)
       // because some Firebase errors come as PlatformException
       setState(() => _isLoading = false);
-      
-      print('PlatformException caught - Code: ${e.code}, Message: ${e.message}');
+
+      print(
+        'PlatformException caught - Code: ${e.code}, Message: ${e.message}',
+      );
       print('PlatformException details: ${e.toString()}');
-      
+
       String message;
       final errorCode = e.code.toString();
       final errorMessage = (e.message ?? '').toLowerCase();
 
+      // Handle ERROR_EMAIL_ALREADY_IN_USE (shouldn't happen in sign in, but catch it anyway)
+      if (errorCode == 'ERROR_EMAIL_ALREADY_IN_USE' ||
+          errorCode.contains('EMAIL_ALREADY_IN_USE') ||
+          errorCode.contains('email-already-in-use') ||
+          errorMessage.contains('email address is already in use') ||
+          errorMessage.contains('email already in use')) {
+        message = 'This email is already registered. Please sign in instead.';
+      }
       // Handle PlatformException with ERROR_INVALID_CREDENTIAL
-      if (errorCode == 'ERROR_INVALID_CREDENTIAL' || 
+      else if (errorCode == 'ERROR_INVALID_CREDENTIAL' ||
           errorCode.contains('INVALID_CREDENTIAL') ||
           errorCode.contains('invalid_credential') ||
+          errorCode.contains('invalid-credential') ||
           errorMessage.contains('invalid credential') ||
           errorMessage.contains('supplied auth credential') ||
           errorMessage.contains('incorrect') ||
           errorMessage.contains('malformed') ||
-          errorMessage.contains('expired')) {
-        message = 'Invalid email or password. Please check your credentials and try again.';
-      } else if (errorCode == 'ERROR_WRONG_PASSWORD' || 
-                 errorCode.contains('WRONG_PASSWORD') ||
-                 errorMessage.contains('wrong password')) {
+          errorMessage.contains('expired') ||
+          errorMessage.contains('invalid login credentials')) {
+        message =
+            'Invalid email or password. Please check your credentials and try again.';
+      } else if (errorCode == 'ERROR_WRONG_PASSWORD' ||
+          errorCode.contains('WRONG_PASSWORD') ||
+          errorCode.contains('wrong-password') ||
+          errorMessage.contains('wrong password') ||
+          errorMessage.contains('incorrect password')) {
         message = 'Incorrect password. Please try again.';
       } else if (errorCode == 'ERROR_USER_NOT_FOUND' ||
-                 errorCode.contains('USER_NOT_FOUND') ||
-                 errorMessage.contains('user not found')) {
+          errorCode.contains('USER_NOT_FOUND') ||
+          errorCode.contains('user-not-found') ||
+          errorMessage.contains('user not found') ||
+          errorMessage.contains('no user record')) {
         message = 'No account found with this email address.';
       } else if (errorCode == 'ERROR_NETWORK_REQUEST_FAILED' ||
-                 errorCode.contains('NETWORK') ||
-                 errorMessage.contains('network')) {
+          errorCode.contains('NETWORK') ||
+          errorCode.contains('network-request-failed') ||
+          errorMessage.contains('network')) {
         message = 'Network error. Please check your internet connection.';
+      } else if (errorCode == 'ERROR_INVALID_EMAIL' ||
+          errorCode.contains('INVALID_EMAIL') ||
+          errorCode.contains('invalid-email') ||
+          errorMessage.contains('invalid email')) {
+        message = 'Please enter a valid email address.';
       } else {
         // Default message for PlatformException - likely credential error
-        message = 'Invalid email or password. Please check your credentials and try again.';
+        message =
+            'Invalid email or password. Please check your credentials and try again.';
       }
 
       _showErrorDialog(message);
@@ -134,10 +155,12 @@ class _SignInScreenState extends State<SignInScreen> {
         case 'invalid-credential':
         case 'invalid-verification-code':
         case 'invalid-verification-id':
-          message = 'Invalid email or password. Please check your credentials and try again.';
+          message =
+              'Invalid email or password. Please check your credentials and try again.';
           break;
         case 'too-many-requests':
-          message = 'Too many failed attempts. Please try again later or reset your password.';
+          message =
+              'Too many failed attempts. Please try again later or reset your password.';
           break;
         case 'network-request-failed':
           message = 'Network error. Please check your internet connection.';
@@ -149,31 +172,65 @@ class _SignInScreenState extends State<SignInScreen> {
       _showErrorDialog(message);
     } catch (e, stackTrace) {
       setState(() => _isLoading = false);
-      
+
       print('Generic exception caught: $e');
       print('Exception type: ${e.runtimeType}');
       print('Stack trace: $stackTrace');
-      
-      String errorMessage = 'Invalid email or password. Please check your credentials and try again.';
-      
+
+      String errorMessage = 'Sign in failed. Please try again.';
+
       // Check if it's an invalid credential error in the message
       final errorString = e.toString().toLowerCase();
-      if (errorString.contains('invalid credential') || 
-          errorString.contains('incorrect') ||
+
+      // Check for email already in use (shouldn't happen in sign in, but catch it)
+      if (errorString.contains('email-already-in-use') ||
+          errorString.contains('error_email_already_in_use') ||
+          errorString.contains('email address is already in use') ||
+          errorString.contains('email already in use')) {
+        errorMessage =
+            'This email is already registered. Please sign in instead.';
+      }
+      // Check for invalid credentials
+      else if (errorString.contains('invalid-credential') ||
+          errorString.contains('invalid credential') ||
           errorString.contains('error_invalid_credential') ||
           errorString.contains('supplied auth credential') ||
           errorString.contains('malformed') ||
-          errorString.contains('expired')) {
-        errorMessage = 'Invalid email or password. Please check your credentials and try again.';
-      } else if (errorString.contains('network')) {
-        errorMessage = 'Network error. Please check your internet connection.';
-      } else if (errorString.contains('user not found')) {
-        errorMessage = 'No account found with this email address.';
-      } else if (errorString.contains('platformexception')) {
-        // If it's a PlatformException that wasn't caught, still show credential error
-        errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+          errorString.contains('expired') ||
+          errorString.contains('incorrect') ||
+          errorString.contains('invalid login credentials')) {
+        errorMessage =
+            'Invalid email or password. Please check your credentials and try again.';
       }
-      
+      // Check for wrong password
+      else if (errorString.contains('wrong-password') ||
+          errorString.contains('wrong password') ||
+          errorString.contains('incorrect password')) {
+        errorMessage = 'Incorrect password. Please try again.';
+      }
+      // Check for user not found
+      else if (errorString.contains('user-not-found') ||
+          errorString.contains('user not found') ||
+          errorString.contains('no user record')) {
+        errorMessage = 'No account found with this email address.';
+      }
+      // Check for network errors
+      else if (errorString.contains('network') ||
+          errorString.contains('network-request-failed')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      }
+      // Check for invalid email
+      else if (errorString.contains('invalid-email') ||
+          errorString.contains('invalid email')) {
+        errorMessage = 'Please enter a valid email address.';
+      }
+      // Check for PlatformException that wasn't caught
+      else if (errorString.contains('platformexception')) {
+        // If it's a PlatformException that wasn't caught, likely credential error
+        errorMessage =
+            'Invalid email or password. Please check your credentials and try again.';
+      }
+
       _showErrorDialog(errorMessage);
     }
   }
@@ -185,9 +242,7 @@ class _SignInScreenState extends State<SignInScreen> {
         content: Text(message),
         backgroundColor: const Color(0xFF8B0000),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -495,29 +550,34 @@ class _SignInScreenState extends State<SignInScreen> {
                         onPressed: _isLoading ? null : _signIn,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF8B0000),
-                          disabledBackgroundColor: const Color(0xFF8B0000).withOpacity(0.6),
+                          disabledBackgroundColor: const Color(
+                            0xFF8B0000,
+                          ).withOpacity(0.6),
                           minimumSize: const Size.fromHeight(52),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        child:
+                            _isLoading
+                                ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                                : const Text(
+                                  'Sign In',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              )
-                            : const Text(
-                                'Sign In',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
                       ),
                       const SizedBox(height: 18),
                       GestureDetector(

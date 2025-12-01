@@ -73,7 +73,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
               });
         } catch (firestoreError) {
           // If Firestore save fails, log but don't block signup
-          print('Warning: Failed to save user data to Firestore: $firestoreError');
+          print(
+            'Warning: Failed to save user data to Firestore: $firestoreError',
+          );
         }
       }
 
@@ -117,32 +119,92 @@ class _SignUpScreenState extends State<SignUpScreen> {
       _showErrorDialog(message);
     } on PlatformException catch (e) {
       setState(() => _isLoading = false);
-      String message;
 
-      if (e.code == 'ERROR_EMAIL_ALREADY_IN_USE') {
+      print(
+        'PlatformException caught - Code: ${e.code}, Message: ${e.message}',
+      );
+      print('PlatformException details: ${e.toString()}');
+
+      String message;
+      final errorCode = e.code.toString();
+      final errorMessage = (e.message ?? '').toLowerCase();
+
+      // Handle ERROR_EMAIL_ALREADY_IN_USE (check code and message)
+      if (errorCode == 'ERROR_EMAIL_ALREADY_IN_USE' ||
+          errorCode.contains('EMAIL_ALREADY_IN_USE') ||
+          errorCode.contains('email-already-in-use') ||
+          errorMessage.contains('email address is already in use') ||
+          errorMessage.contains('email already in use') ||
+          errorMessage.contains('already registered')) {
         message = 'This email is already registered. Please sign in instead.';
-      } else if (e.code == 'ERROR_WEAK_PASSWORD') {
+      } else if (errorCode == 'ERROR_WEAK_PASSWORD' ||
+          errorCode.contains('WEAK_PASSWORD') ||
+          errorCode.contains('weak-password') ||
+          errorMessage.contains('weak password')) {
         message = 'Password should be at least 6 characters long.';
-      } else if (e.code == 'ERROR_INVALID_EMAIL') {
+      } else if (errorCode == 'ERROR_INVALID_EMAIL' ||
+          errorCode.contains('INVALID_EMAIL') ||
+          errorCode.contains('invalid-email') ||
+          errorMessage.contains('invalid email')) {
         message = 'Please enter a valid email address.';
-      } else if (e.code == 'ERROR_NETWORK_REQUEST_FAILED') {
+      } else if (errorCode == 'ERROR_NETWORK_REQUEST_FAILED' ||
+          errorCode.contains('NETWORK') ||
+          errorMessage.contains('network')) {
         message = 'Network error. Please check your internet connection.';
+      } else if (errorCode == 'ERROR_INVALID_CREDENTIAL' ||
+          errorCode.contains('INVALID_CREDENTIAL') ||
+          errorCode.contains('invalid-credential') ||
+          errorMessage.contains('invalid credential')) {
+        message = 'Invalid credentials. Please check your email and password.';
       } else {
         message = 'Registration failed. ${e.message ?? 'Please try again.'}';
       }
 
       _showErrorDialog(message);
-    } catch (e) {
+    } catch (e, stackTrace) {
       setState(() => _isLoading = false);
-      String errorMessage = 'An unexpected error occurred.';
-      
-      if (e.toString().contains('email-already-in-use') ||
-          e.toString().contains('ERROR_EMAIL_ALREADY_IN_USE')) {
-        errorMessage = 'This email is already registered. Please sign in instead.';
-      } else if (e.toString().contains('network')) {
+
+      print('Generic exception caught: $e');
+      print('Exception type: ${e.runtimeType}');
+      print('Stack trace: $stackTrace');
+
+      String errorMessage = 'An unexpected error occurred. Please try again.';
+      final errorString = e.toString().toLowerCase();
+
+      // Check for email already in use
+      if (errorString.contains('email-already-in-use') ||
+          errorString.contains('error_email_already_in_use') ||
+          errorString.contains('email address is already in use') ||
+          errorString.contains('email already in use') ||
+          errorString.contains('already registered')) {
+        errorMessage =
+            'This email is already registered. Please sign in instead.';
+      }
+      // Check for invalid credentials
+      else if (errorString.contains('invalid-credential') ||
+          errorString.contains('error_invalid_credential') ||
+          errorString.contains('invalid credential') ||
+          errorString.contains('supplied auth credential') ||
+          errorString.contains('malformed') ||
+          errorString.contains('incorrect')) {
+        errorMessage =
+            'Invalid credentials. Please check your email and password.';
+      }
+      // Check for network errors
+      else if (errorString.contains('network')) {
         errorMessage = 'Network error. Please check your internet connection.';
       }
-      
+      // Check for weak password
+      else if (errorString.contains('weak-password') ||
+          errorString.contains('weak password')) {
+        errorMessage = 'Password should be at least 6 characters long.';
+      }
+      // Check for invalid email
+      else if (errorString.contains('invalid-email') ||
+          errorString.contains('invalid email')) {
+        errorMessage = 'Please enter a valid email address.';
+      }
+
       _showErrorDialog(errorMessage);
     }
   }
@@ -154,9 +216,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         content: Text(message),
         backgroundColor: const Color(0xFF8B0000),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -452,29 +512,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         onPressed: _isLoading ? null : _signUp,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF8B0000),
-                          disabledBackgroundColor: const Color(0xFF8B0000).withOpacity(0.6),
+                          disabledBackgroundColor: const Color(
+                            0xFF8B0000,
+                          ).withOpacity(0.6),
                           minimumSize: const Size.fromHeight(52),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        child:
+                            _isLoading
+                                ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                                : const Text(
+                                  'Sign Up',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              )
-                            : const Text(
-                                'Sign Up',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
                       ),
                       const SizedBox(height: 18),
                       GestureDetector(
