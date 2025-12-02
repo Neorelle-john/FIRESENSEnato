@@ -154,9 +154,11 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     }
   }
 
-  final List<Widget> _screens = [
+  List<Widget> get _screens => [
     // Dashboard
-    _AdminDashboard(),
+    _AdminDashboard(
+      onNavigateToAlerts: _navigateToAlerts,
+    ),
     // Clients
     AdminClientsScreen(),
     // Alerts
@@ -177,6 +179,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       _selectedIndex = index;
     });
     Navigator.pop(context); // Close the drawer
+  }
+
+  void _navigateToAlerts() {
+    setState(() {
+      _selectedIndex = 2; // Navigate to Alerts tab
+    });
   }
 
   void _logout(BuildContext context) async {
@@ -564,7 +572,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
 // Enhanced Dashboard widget with comprehensive data
 class _AdminDashboard extends StatefulWidget {
-  const _AdminDashboard();
+  final VoidCallback? onNavigateToAlerts;
+
+  const _AdminDashboard({this.onNavigateToAlerts});
 
   @override
   State<_AdminDashboard> createState() => _AdminDashboardState();
@@ -994,92 +1004,106 @@ class _AdminDashboardState extends State<_AdminDashboard> {
                         }
                       }
 
-                      return Container(
-                        margin: EdgeInsets.only(
-                          top: alerts.indexOf(alertDoc) == 0 ? 16 : 0,
-                          bottom:
-                              alerts.indexOf(alertDoc) == alerts.length - 1
-                                  ? 16
-                                  : 0,
-                          left: 16,
-                          right: 16,
-                        ),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            // Show alert details when tile is tapped
+                            AdminAlertHelper.showAlertDetails(
+                              context,
+                              alert,
+                              alertDoc.id,
+                            );
+                          },
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: statusColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                Icons.local_fire_department,
-                                color: statusColor,
-                                size: 20,
-                              ),
+                          child: Container(
+                            margin: EdgeInsets.only(
+                              top: alerts.indexOf(alertDoc) == 0 ? 16 : 0,
+                              bottom:
+                                  alerts.indexOf(alertDoc) == alerts.length - 1
+                                      ? 16
+                                      : 0,
+                              left: 16,
+                              right: 16,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    deviceName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'User: $userName',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                            child: Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
+                                  width: 40,
+                                  height: 40,
                                   decoration: BoxDecoration(
                                     color: statusColor.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Text(
-                                    status,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: statusColor,
-                                    ),
+                                  child: Icon(
+                                    Icons.local_fire_department,
+                                    color: statusColor,
+                                    size: 20,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  timeAgo,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey.shade500,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        deviceName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'User: $userName',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        status,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: statusColor,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      timeAgo,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ],
+                          ),
                         ),
                       );
                     }).toList(),
@@ -1088,17 +1112,8 @@ class _AdminDashboardState extends State<_AdminDashboard> {
                         padding: const EdgeInsets.only(bottom: 16),
                         child: TextButton.icon(
                           onPressed: () {
-                            // Navigate to alerts screen
-                            // The parent widget should handle navigation
-                            // For now, just show a message
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'View all alerts in the Alerts tab',
-                                ),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
+                            // Navigate to alerts tab
+                            widget.onNavigateToAlerts?.call();
                           },
                           icon: const Icon(Icons.arrow_forward, size: 16),
                           label: const Text('View All Alerts'),

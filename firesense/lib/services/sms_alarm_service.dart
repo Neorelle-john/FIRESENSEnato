@@ -5,18 +5,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
-/// Service that handles sending SMS messages to emergency contacts
-/// using Semaphore API
 class SmsAlarmService {
   static final SmsAlarmService _instance = SmsAlarmService._internal();
   factory SmsAlarmService() => _instance;
   SmsAlarmService._internal();
 
-  /// 🔐 Add your SEMAPHORE API KEY here
   final String semaphoreApiKey = "82455a454f0ce70f298dfe2525f25b36";
 
-  /// Send SMS to all emergency contacts when alarm is triggered
-  /// Wrapped with overall timeout to prevent hanging on emulators
   Future<Map<String, int>> sendAlarmSms({
     required String deviceName,
     required String deviceId,
@@ -29,7 +24,6 @@ class SmsAlarmService {
     }
 
     try {
-      // Wrap entire operation in timeout to prevent hanging (especially on emulators)
       return await Future.any([
         _sendAlarmSmsInternal(
           userId: user.uid,
@@ -52,7 +46,6 @@ class SmsAlarmService {
     }
   }
 
-  /// Internal method to send SMS with proper timeout handling
   Future<Map<String, int>> _sendAlarmSmsInternal({
     required String userId,
     required String deviceName,
@@ -60,7 +53,6 @@ class SmsAlarmService {
     Map<String, double>? deviceLocation,
   }) async {
     try {
-      // Fetch template and contacts with timeouts
       final messageTemplate = await _getMessageTemplate(
         userId,
       ).timeout(const Duration(seconds: 5));
@@ -80,7 +72,6 @@ class SmsAlarmService {
         deviceLocation: deviceLocation,
       );
 
-      // Collect all valid phone numbers
       final List<String> formattedNumbers = [];
 
       for (final contact in contacts) {
@@ -109,7 +100,6 @@ class SmsAlarmService {
         return {'success': 0, 'failed': contacts.length};
       }
 
-      // Send SMS to all contacts in a single API call
       try {
         print(
           'SMS Service: Sending to ${formattedNumbers.length} numbers: ${formattedNumbers.join(", ")}',
@@ -144,7 +134,6 @@ class SmsAlarmService {
     }
   }
 
-  /// Fetch custom message template
   Future<String> _getMessageTemplate(String userId) async {
     try {
       final userDoc = await FirebaseFirestore.instance
@@ -167,7 +156,6 @@ class SmsAlarmService {
     }
   }
 
-  /// Fetch stored emergency contacts
   Future<List<Map<String, dynamic>>> _getEmergencyContacts(
     String userId,
   ) async {
@@ -189,7 +177,6 @@ class SmsAlarmService {
     }
   }
 
-  /// Format message with replacements
   String _formatMessage({
     required String template,
     required String deviceName,
@@ -236,25 +223,17 @@ Time: [TIME]
 Date: [DATE]''';
   }
 
-  // ------------------------------------------------------------------------
-  // 🚀 SEMAPHORE SMS API SENDER
-  // ------------------------------------------------------------------------
-  /// Send SMS to multiple phone numbers using comma-separated format
-  /// phoneNumbers: List of formatted phone numbers (e.g., ["639123456789", "639998887777"])
-  /// Returns a map with success and failed counts
   Future<Map<String, int>> _sendSmsViaSemaphore(
     List<String> phoneNumbers,
     String message,
   ) async {
     try {
-      // Format as comma-separated string: "639123456789,639998887777,639554443333"
       final numberString = phoneNumbers.join(',');
 
       print(
         "SMS Service: Sending request to Semaphore with numbers: $numberString",
       );
 
-      // Use a shorter timeout for emulator compatibility (10 seconds)
       final response = await http
           .post(
             Uri.parse("https://semaphore.co/api/v4/messages"),
@@ -285,25 +264,16 @@ Date: [DATE]''';
 
       final data = jsonDecode(response.body);
 
-      // Semaphore API response formats:
-      // 1. Array of results: [{"message_id": "...", "number": "...", ...}, ...]
-      // 2. Single object: {"message_id": "...", ...} or {"status": "success", ...}
-      // 3. Error object: {"error": "...", "message": "..."}
-
-      // Check for error response first
       if (data is Map &&
           (data.containsKey('error') || data.containsKey('message'))) {
         final errorMsg = data['error'] ?? data['message'] ?? 'Unknown error';
         print("SMS Service: Semaphore API error: $errorMsg");
-        // Check if it's a validation error that might still allow some messages
         if (errorMsg.toString().toLowerCase().contains('number format')) {
-          // If it's a number format error, all failed
           return {'success': 0, 'failed': phoneNumbers.length};
         }
         return {'success': 0, 'failed': phoneNumbers.length};
       }
 
-      // Handle array response (multiple recipients)
       if (data is List) {
         int successCount = 0;
         int failedCount = 0;
@@ -313,11 +283,6 @@ Date: [DATE]''';
           final number = phoneNumbers[i];
 
           if (result is Map) {
-            // Success indicators (in order of reliability):
-            // 1. message_id exists (most reliable)
-            // 2. status is "success", "Queued", "Sent", or "Pending"
-            // 3. No error fields present
-
             bool isSuccess = false;
 
             if (result.containsKey('message_id')) {
@@ -346,7 +311,6 @@ Date: [DATE]''';
               );
             }
           } else {
-            // Non-map result - treat as failure
             failedCount++;
             print(
               "SMS Service: ✗ Unexpected result format for $number: $result",
@@ -354,7 +318,6 @@ Date: [DATE]''';
           }
         }
 
-        // If we got fewer results than numbers, assume the rest failed
         if (data.length < phoneNumbers.length) {
           failedCount += phoneNumbers.length - data.length;
           print(
@@ -366,10 +329,7 @@ Date: [DATE]''';
           "SMS Service: Final result - Success: $successCount, Failed: $failedCount",
         );
         return {'success': successCount, 'failed': failedCount};
-      }
-      // Handle single object response (all recipients in one response)
-      else if (data is Map) {
-        // Success indicators for single response
+      } else if (data is Map) {
         bool isSuccess = false;
 
         if (data.containsKey('message_id')) {
@@ -383,7 +343,6 @@ Date: [DATE]''';
               status == 'pending' ||
               status == 'processing';
         } else if (!data.containsKey('error') && !data.containsKey('message')) {
-          // If no error fields, assume success (HTTP 200 means request was accepted)
           isSuccess = true;
         }
 
@@ -396,14 +355,10 @@ Date: [DATE]''';
           print("SMS Service: ✗ Single response indicates failure: $data");
           return {'success': 0, 'failed': phoneNumbers.length};
         }
-      }
-      // Unexpected format - but if HTTP 200, assume success (API accepted the request)
-      else {
+      } else {
         print(
           "SMS Service: Warning - Unexpected response format, but HTTP 200. Assuming success: ${response.body}",
         );
-        // Since HTTP 200 means the request was accepted, assume all succeeded
-        // The actual delivery might be async, but the API accepted it
         return {'success': phoneNumbers.length, 'failed': 0};
       }
     } on HandshakeException catch (e) {
@@ -423,19 +378,14 @@ Date: [DATE]''';
   }
 
   String _formatPhoneNumber(String number) {
-    // Remove all non-digit characters (including +, spaces, dashes, etc.)
     String clean = number.replaceAll(RegExp(r'[^\d]'), '');
 
-    // If starts with 63 → keep as is (already in correct format)
     if (clean.startsWith("63")) {
-      // Ensure it's exactly 12 digits (63 + 10 digits)
       if (clean.length == 12) {
         return clean;
       } else if (clean.length > 12) {
-        // Take first 12 digits if longer
         return clean.substring(0, 12);
       } else {
-        // If shorter, might be missing digits
         print(
           "SMS Service: Warning - number $number formatted to $clean (length: ${clean.length})",
         );
@@ -443,7 +393,6 @@ Date: [DATE]''';
       }
     }
 
-    // If starts with 0 → convert to 63
     if (clean.startsWith("0")) {
       final withoutZero = clean.substring(1);
       if (withoutZero.length == 10) {
@@ -456,12 +405,10 @@ Date: [DATE]''';
       }
     }
 
-    // If already missing leading 0 and has 10 digits
     if (clean.length == 10) {
       return "63$clean";
     }
 
-    // If it's 9 digits, might be missing leading 0
     if (clean.length == 9) {
       return "63$clean";
     }
