@@ -521,6 +521,14 @@ class _EditContactScreenState extends State<EditContactScreen> {
                               border: border,
                               enabledBorder: border,
                               focusedBorder: border,
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.red, width: 2),
+                              ),
+                              focusedErrorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.red, width: 2),
+                              ),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                                 vertical: 18,
@@ -549,6 +557,14 @@ class _EditContactScreenState extends State<EditContactScreen> {
                               border: border,
                               enabledBorder: border,
                               focusedBorder: border,
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.red, width: 2),
+                              ),
+                              focusedErrorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.red, width: 2),
+                              ),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                                 vertical: 18,
@@ -576,6 +592,14 @@ class _EditContactScreenState extends State<EditContactScreen> {
                               border: border,
                               enabledBorder: border,
                               focusedBorder: border,
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.red, width: 2),
+                              ),
+                              focusedErrorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Colors.red, width: 2),
+                              ),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                                 vertical: 18,

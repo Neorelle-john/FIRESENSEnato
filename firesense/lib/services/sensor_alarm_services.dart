@@ -7,8 +7,6 @@ import 'package:firesense/services/sms_alarm_service.dart';
 import 'package:firesense/services/notification_service.dart';
 import 'package:firesense/services/admin_alert_service.dart';
 
-/// A singleton service that listens to Realtime Database sensor data
-/// and notifies listeners when an alarm occurs from any user device.
 class SensorAlarmService {
   static final SensorAlarmService _instance = SensorAlarmService._internal();
   factory SensorAlarmService() => _instance;
@@ -18,29 +16,23 @@ class SensorAlarmService {
   final List<StreamSubscription> _listeners = [];
   final _alarmController = StreamController<Map<String, String>>.broadcast();
 
-  /// Stream that emits alarm events with deviceId and deviceName
   Stream<Map<String, String>> get alarmStream => _alarmController.stream;
 
-  /// Current alarm state
   Map<String, String>? _currentAlarm;
   Map<String, String>? get currentAlarm => _currentAlarm;
 
-  /// Callback to notify the UI when alarm occurs (for backward compatibility)
   VoidCallback? onAlarmTriggered;
 
-  /// Track processed alarms to prevent duplicate processing
   final Set<String> _processedAlarms = {};
   Timer? _debounceTimer;
 
-  /// Debounce delay to prevent rapid-fire alarm triggers (especially on emulator)
   static const Duration _debounceDelay = Duration(milliseconds: 2000);
 
-  /// Maximum time for any async operation
   static const Duration _maxOperationTimeout = Duration(seconds: 15);
 
-  /// Start listening to all devices for the current user
+
   void startListeningToAllUserDevices() {
-    stopListening(); // Stop any existing listeners
+    stopListening(); 
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -52,7 +44,6 @@ class SensorAlarmService {
       'Sensor Alarm Service: Starting to listen to all devices for user ${user.uid}',
     );
 
-    // Fetch all user devices from Firestore
     FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
@@ -83,18 +74,14 @@ class SensorAlarmService {
         })
         .catchError((error) {
           print('Sensor Alarm Service: Error fetching user devices: $error');
-          // Don't let Firestore errors crash the app
         });
   }
 
-  /// Start listening to ALL devices in RTDB (useful for admin or testing)
-  /// This listens to the Devices node and monitors all devices
   void startListeningToAllDevices() {
-    stopListening(); // Stop any existing listeners
+    stopListening();
 
     print('Sensor Alarm Service: Starting to listen to ALL devices in RTDB');
 
-    // Listen to the entire Devices node
     final listener = dbRef
         .child('Devices')
         .onValue
@@ -107,25 +94,21 @@ class SensorAlarmService {
               return;
             }
 
-            // Check each device for alarm
             devicesData.forEach((deviceId, deviceData) {
               if (deviceData is Map) {
                 final alarmValue = deviceData['Alarm'] ?? deviceData['alarm'];
                 final isAlarm = alarmValue == true;
 
                 if (isAlarm) {
-                  // Get device name from Firestore if available, otherwise use deviceId
                   final deviceName =
                       deviceData['name'] as String? ?? deviceId.toString();
 
-                  // Only trigger if this is a new alarm (not already triggered)
                   if (_currentAlarm == null ||
                       _currentAlarm!['deviceId'] != deviceId.toString()) {
                     print(
                       'Sensor Alarm Service: Alarm detected for device $deviceId via all-devices listener!',
                     );
 
-                    // Check if we've already processed this alarm recently (debounce)
                     if (_processedAlarms.contains(deviceId.toString())) {
                       print(
                         'Sensor Alarm Service: Alarm for device $deviceId already being processed, skipping duplicate',
@@ -138,16 +121,13 @@ class SensorAlarmService {
                       'deviceName': deviceName,
                     };
 
-                    // Mark as processing
                     _processedAlarms.add(deviceId.toString());
 
-                    // Clear the processed flag after debounce delay
                     _debounceTimer?.cancel();
                     _debounceTimer = Timer(_debounceDelay, () {
                       _processedAlarms.remove(deviceId.toString());
                     });
 
-                    // Emit alarm event (synchronous, non-blocking)
                     try {
                       _alarmController.add(_currentAlarm!);
                       print(
@@ -159,11 +139,9 @@ class SensorAlarmService {
                       );
                     }
 
-                    // Process alarm actions with delays to prevent overwhelming the emulator
                     _processAlarmActions(deviceId.toString(), deviceName);
                   }
                 } else {
-                  // Alarm is false, clear current alarm if it was from this device
                   if (_currentAlarm != null &&
                       _currentAlarm!['deviceId'] == deviceId.toString()) {
                     _currentAlarm = null;
@@ -183,7 +161,6 @@ class SensorAlarmService {
     print('Sensor Alarm Service: All-devices listener started');
   }
 
-  /// Start listening to a specific device
   void _startListeningToDevice(String deviceId, String deviceName) {
     print(
       'Sensor Alarm Service: Starting to listen to device $deviceId ($deviceName)',
@@ -200,26 +177,22 @@ class SensorAlarmService {
               return;
             }
 
-            // Debug: print current alarm state
             final alarmValue = data['Alarm'];
             print(
               'Sensor Alarm Service: Device $deviceId - Alarm value: $alarmValue (type: ${alarmValue.runtimeType})',
             );
 
-            // Check if "alarm" field is true (case-insensitive check for both 'Alarm' and 'alarm')
             final isAlarm = data['Alarm'] == true || data['alarm'] == true;
             if (isAlarm) {
               print(
                 'Sensor Alarm Service: Alarm detected for device $deviceId!',
               );
-              // Only trigger if this is a new alarm (not already triggered)
               if (_currentAlarm == null ||
                   _currentAlarm!['deviceId'] != deviceId) {
                 print(
                   'Sensor Alarm Service: Triggering new alarm for device $deviceId',
                 );
 
-                // Check if we've already processed this alarm recently (debounce)
                 if (_processedAlarms.contains(deviceId)) {
                   print(
                     'Sensor Alarm Service: Alarm for device $deviceId already being processed, skipping duplicate',
@@ -232,16 +205,13 @@ class SensorAlarmService {
                   'deviceName': deviceName,
                 };
 
-                // Mark as processing
                 _processedAlarms.add(deviceId);
 
-                // Clear the processed flag after debounce delay
                 _debounceTimer?.cancel();
                 _debounceTimer = Timer(_debounceDelay, () {
                   _processedAlarms.remove(deviceId);
                 });
 
-                // Emit alarm event (synchronous, non-blocking)
                 try {
                   _alarmController.add(_currentAlarm!);
                   print(
@@ -251,11 +221,9 @@ class SensorAlarmService {
                   print('Sensor Alarm Service: Error emitting alarm event: $e');
                 }
 
-                // Process alarm actions with delays to prevent overwhelming the emulator
                 _processAlarmActions(deviceId, deviceName);
               }
             } else {
-              // Alarm is false, clear current alarm if it was from this device
               if (_currentAlarm != null &&
                   _currentAlarm!['deviceId'] == deviceId) {
                 _currentAlarm = null;
@@ -264,25 +232,20 @@ class SensorAlarmService {
           },
           onError: (error) {
             print('Realtime Database listener error: $error');
-            // Don't let database errors crash the app
           },
         );
 
     _listeners.add(listener);
   }
 
-  /// Process alarm actions with delays to prevent overwhelming the system
-  /// This method spreads out async operations to prevent blocking
   void _processAlarmActions(String deviceId, String deviceName) {
-    // Check if current user is admin
     final user = FirebaseAuth.instance.currentUser;
     final isAdmin = user?.email == 'admin@gmail.com';
 
-    // Send notification immediately (lightweight operation)
     Future.microtask(() async {
       try {
         if (isAdmin) {
-          // Admin notification - more informative and action-oriented
+          // Admin notification
           await NotificationService()
               .showNotification(
                 title: '🚨 Alert Detected',
@@ -292,7 +255,7 @@ class SensorAlarmService {
               )
               .timeout(_maxOperationTimeout);
         } else {
-          // User notification - evacuation focused
+          // User notification
           await NotificationService()
               .showNotification(
                 title: '🔥 Fire Alarm Triggered',
@@ -307,9 +270,7 @@ class SensorAlarmService {
         print('Sensor Alarm Service: Error showing notification: $error');
       }
     });
-
-    // TEMPORARILY DISABLED: Send SMS after a short delay (to prevent simultaneous network calls)
-    // Commented out for emulator demonstration
+    
     // Future.delayed(const Duration(milliseconds: 500), () {
     //   Future.microtask(() async {
     //     try {
@@ -334,14 +295,12 @@ class SensorAlarmService {
     //   });
     // });
 
-    // Send alert to admin after another delay (spread out network operations)
     Future.delayed(const Duration(milliseconds: 1000), () {
       Future.microtask(() async {
         try {
           print(
             'Sensor Alarm Service: Sending admin alert for device $deviceId',
           );
-          // AdminAlertService handles its own timeout, so we don't need another timeout here
           await AdminAlertService().sendAlarmAlert(
             deviceId: deviceId,
             deviceName: deviceName,
@@ -350,12 +309,10 @@ class SensorAlarmService {
         } catch (error, stackTrace) {
           print('Sensor Alarm Service: Admin Alert error: $error');
           print('Sensor Alarm Service: Stack trace: $stackTrace');
-          // Don't rethrow - we don't want alert errors to crash the app
         }
       });
     });
 
-    // Callback for backward compatibility (synchronous, safe)
     try {
       if (onAlarmTriggered != null) {
         onAlarmTriggered!();
@@ -482,7 +439,11 @@ class SensorAlarmService {
   /// Stop listening to all devices
   void stopListening() {
     for (var listener in _listeners) {
-      listener.cancel();
+      try {
+        listener.cancel();
+      } catch (e) {
+        print('Warning: Error cancelling listener in SensorAlarmService: $e');
+      }
     }
     _listeners.clear();
     _currentAlarm = null;

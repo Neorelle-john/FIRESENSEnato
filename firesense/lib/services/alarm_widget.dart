@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:firebase_database/firebase_database.dart';
 
 class AlarmOverlay extends StatelessWidget {
   final String? deviceName;
@@ -60,20 +58,6 @@ class AlarmOverlay extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Fire Icon
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: primaryRed.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.local_fire_department,
-                        color: primaryRed,
-                        size: 64,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
                     // Alarm Title
                     const Text(
                       "FIRE ALARM",
@@ -151,34 +135,14 @@ class AlarmOverlay extends StatelessWidget {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () async {
+                        onPressed: () {
                           if (onOpenAlert != null) {
                             // Admin side: Open alert details
                             onOpenAlert!();
                             onClose();
                           } else {
-                            // User side: Set Alarm to false in Realtime Database
-                            if (deviceId != null && deviceId!.isNotEmpty) {
-                              try {
-                                final dbRef = FirebaseDatabase.instance.ref();
-                                // Add timeout to prevent hanging
-                                await dbRef
-                                    .child('Devices/$deviceId/Alarm')
-                                    .set(false)
-                                    .timeout(const Duration(seconds: 5));
-                              } on TimeoutException catch (e) {
-                                print(
-                                  'Alarm acknowledge: Database write timeout: $e',
-                                );
-                                // Continue to close overlay even if database write fails
-                              } catch (e) {
-                                print(
-                                  'Alarm acknowledge: Error setting alarm to false: $e',
-                                );
-                                // Continue to close overlay even if database write fails
-                              }
-                            }
-                            // Always close the overlay
+                            // User side: Just close the overlay without changing alarm state
+                            // Alarm can only be turned off via "Deactivate Alarm" button in device details
                             onClose();
                           }
                         },

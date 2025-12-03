@@ -31,9 +31,11 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Location services are disabled.")),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Location services are disabled.")),
+          );
+        }
         return;
       }
 
@@ -41,9 +43,11 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Location permission denied.")),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Location permission denied.")),
+            );
+          }
           return;
         }
       }
@@ -52,65 +56,78 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      setState(() {
-        selectedLat = pos.latitude;
-        selectedLng = pos.longitude;
-      });
+      if (mounted) {
+        setState(() {
+          selectedLat = pos.latitude;
+          selectedLng = pos.longitude;
+        });
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error getting location: $e")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error getting location: $e")),
+        );
+      }
     }
   }
 
   Future<void> geocodeAddress() async {
     final address = _addressController.text.trim();
     if (address.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Please enter an address.")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please enter an address.")),
+        );
+      }
       return;
     }
 
-    setState(() => _isGeocoding = true);
+    if (mounted) {
+      setState(() => _isGeocoding = true);
+    }
 
     try {
       List<Location> locations = await locationFromAddress(address);
 
-      if (locations.isNotEmpty) {
-        final location = locations.first;
-        setState(() {
-          selectedLat = location.latitude;
-          selectedLng = location.longitude;
-        });
+      if (mounted) {
+        if (locations.isNotEmpty) {
+          final location = locations.first;
+          setState(() {
+            selectedLat = location.latitude;
+            selectedLng = location.longitude;
+            _isGeocoding = false;
+          });
 
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Location found: ${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}",
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          setState(() => _isGeocoding = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                "Could not find location for this address. Please try a more specific address.",
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isGeocoding = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              "Location found: ${location.latitude.toStringAsFixed(6)}, ${location.longitude.toStringAsFixed(6)}",
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Could not find location for this address. Please try a more specific address.",
-            ),
-            backgroundColor: Colors.orange,
+            content: Text("Error geocoding address: $e"),
+            backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Error geocoding address: $e"),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => _isGeocoding = false);
     }
   }
 
@@ -334,6 +351,14 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                             borderRadius: BorderRadius.circular(15),
                             borderSide: BorderSide(color: primaryRed, width: 2),
                           ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: const BorderSide(color: Colors.red, width: 2),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: const BorderSide(color: Colors.red, width: 2),
+                          ),
                         ),
                       ),
 
@@ -345,6 +370,15 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
                             return "Device ID cannot be empty";
+                          }
+                          // Validate device ID doesn't contain invalid characters for Firebase paths
+                          final invalidChars = RegExp(r'[/.#\$\[\]]');
+                          if (invalidChars.hasMatch(value)) {
+                            return "Device ID cannot contain /, ., #, \$, [, or ]";
+                          }
+                          // Validate length
+                          if (value.trim().length > 50) {
+                            return "Device ID must be 50 characters or less";
                           }
                           return null;
                         },
@@ -362,6 +396,14 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(15),
                             borderSide: BorderSide(color: primaryRed, width: 2),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: const BorderSide(color: Colors.red, width: 2),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: const BorderSide(color: Colors.red, width: 2),
                           ),
                         ),
                       ),
@@ -401,6 +443,20 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                                   borderRadius: BorderRadius.circular(15),
                                   borderSide: BorderSide(
                                     color: primaryRed,
+                                    width: 2,
+                                  ),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: const BorderSide(
+                                    color: Colors.red,
+                                    width: 2,
+                                  ),
+                                ),
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: const BorderSide(
+                                    color: Colors.red,
                                     width: 2,
                                   ),
                                 ),

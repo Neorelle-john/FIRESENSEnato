@@ -233,7 +233,9 @@ Date: [DATE]''';
       print(
         "SMS Service: Sending request to Semaphore with numbers: $numberString",
       );
-
+      // Back up if di naapprove sender name by december 4
+      // SEMAPHORE_API_KEY = 587a6c6f530b1a22926bf5568ee84e8c
+      // SEMAPHORE_SENDER_NAME = Click2Serve
       final response = await http
           .post(
             Uri.parse("https://semaphore.co/api/v4/messages"),

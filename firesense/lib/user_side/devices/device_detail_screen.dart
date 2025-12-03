@@ -30,6 +30,7 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
 
   bool _showAlarm = false;
   bool _testAlarm = false;
+  bool _alarmState = false; // Current alarm state from RTDB
 
   @override
   void initState() {
@@ -68,12 +69,15 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
           );
           // Update test alarm state from RTDB (default to false if not set)
           _testAlarm = data['TestAlarm'] == true;
+          // Update alarm state from RTDB (default to false if not set)
+          _alarmState = data['Alarm'] == true || data['alarm'] == true;
         });
       } else {
-        // If data is null, ensure TestAlarm defaults to false
+        // If data is null, ensure TestAlarm and Alarm default to false
         if (mounted) {
           setState(() {
             _testAlarm = false;
+            _alarmState = false;
           });
         }
       }
@@ -165,6 +169,52 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
     }
   }
 
+  Future<void> _toggleAlarm() async {
+    try {
+      final newValue = !_alarmState;
+      await dbRef
+          .child('Devices/${widget.deviceId}/Alarm')
+          .set(newValue)
+          .timeout(const Duration(seconds: 5));
+
+      if (mounted) {
+        setState(() {
+          _alarmState = newValue;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(newValue ? 'Alarm activated' : 'Alarm deactivated'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: newValue ? Colors.red : Colors.green,
+          ),
+        );
+      }
+    } on TimeoutException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Timeout: Could not update alarm'),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      print('Alarm toggle timeout: $e');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      print('Error toggling alarm: $e');
+    }
+  }
+
   Future<void> _toggleTestAlarm() async {
     try {
       final newValue = !_testAlarm;
@@ -214,38 +264,152 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
   }
 
   Future<void> _disconnectDevice() async {
-    // Show confirmation dialog
+    // Show confirmation dialog with improved UI
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Disconnect Device'),
-            content: Text(
-              'Are you sure you want to disconnect "$deviceName"?\n\n'
-              'This will remove the device from your account.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Disconnect'),
-              ),
-            ],
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Color(0xFF8B0000),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.link_off_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Title
+                const Text(
+                  'Disconnect Device',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E1E1E),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Message
+                Text(
+                  'Are you sure you want to disconnect "$deviceName"?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey.shade700,
+                          side: BorderSide(color: Colors.grey.shade300),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF8B0000),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Disconnect',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
 
     if (confirmed != true || !mounted) return;
 
     try {
-      // Show loading indicator
+      // Show loading indicator with improved UI
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
+        builder:
+            (context) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFF8B0000),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Disconnecting Device...',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1E1E1E),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Please wait',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
       );
 
       final user = FirebaseAuth.instance.currentUser!;
@@ -342,9 +506,17 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
 
   @override
   void dispose() {
-    // FIXED: Properly cancel listener
-    deviceListener?.cancel();
-    _alarmTypeSubscription?.cancel();
+    // FIXED: Properly cancel listener with exception handling
+    try {
+      deviceListener?.cancel();
+    } catch (e) {
+      print('Warning: Error cancelling device listener: $e');
+    }
+    try {
+      _alarmTypeSubscription?.cancel();
+    } catch (e) {
+      print('Warning: Error cancelling alarm type subscription: $e');
+    }
     SensorAlarmService().stopListening();
     super.dispose();
   }
@@ -382,7 +554,9 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
                 child: PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert, color: Colors.black87),
                   onSelected: (value) {
-                    if (value == 'test_alarm') {
+                    if (value == 'edit') {
+                      _navigateToEditScreen();
+                    } else if (value == 'test_alarm') {
                       _toggleTestAlarm();
                     } else if (value == 'disconnect') {
                       _disconnectDevice();
@@ -390,6 +564,17 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
                   },
                   itemBuilder:
                       (context) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit, color: Colors.black87),
+                              SizedBox(width: 12),
+                              Text('Edit Device'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(),
                         PopupMenuItem(
                           value: 'test_alarm',
                           child: Row(
@@ -415,11 +600,11 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
                           value: 'disconnect',
                           child: Row(
                             children: [
-                              Icon(Icons.link_off, color: Colors.red),
+                              Icon(Icons.link_off, color: Color(0xFF8B0000)),
                               SizedBox(width: 12),
                               Text(
                                 'Disconnect Device',
-                                style: TextStyle(color: Colors.red),
+                                style: TextStyle(color: Color(0xFF8B0000)),
                               ),
                             ],
                           ),
@@ -645,7 +830,7 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
                   ],
                 ),
               ),
-              // Bottom Edit Button
+              // Bottom Alarm Toggle Button
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -662,17 +847,17 @@ class _DeviceDetailsScreenState extends State<DeviceDetailsScreen> {
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _navigateToEditScreen,
-                      icon: const Icon(Icons.edit, size: 20),
-                      label: const Text(
-                        'Edit Device',
-                        style: TextStyle(
+                      onPressed: _toggleAlarm,
+                      label: Text(
+                        _alarmState ? 'Deactivate Alarm' : 'Activate Alarm',
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF8B0000),
+                        backgroundColor:
+                            _alarmState ? Colors.red : const Color(0xFF8B0000),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           vertical: 16,

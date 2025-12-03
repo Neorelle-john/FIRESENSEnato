@@ -5,23 +5,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:firesense/services/notification_service.dart';
 
-/// Service for loading TensorFlow Lite model and making fire predictions
-/// based on sensor data from Firebase Realtime Database.
-///
-/// IMPORTANT: This service ONLY READS from RTDB, it NEVER WRITES to RTDB.
-/// All predictions are stored in Firestore only.
-///
-/// Usage example:
-/// ```dart
-/// final service = FirePredictionService();
-/// await service.loadModel();
-///
-/// // Make prediction for Arduino device (Device3)
-/// final result = await service.predict('Device3');
-/// if (result != null) {
-///   print('Prediction: ${result['label']} (confidence: ${result['confidence']})');
-/// }
-/// ```
+
 class FirePredictionService {
   static final FirePredictionService _instance =
       FirePredictionService._internal();
@@ -31,34 +15,21 @@ class FirePredictionService {
   Interpreter? _interpreter;
   bool _isModelLoaded = false;
 
-  // Real-time listening
   StreamSubscription<DatabaseEvent>? _realtimeListener;
   Map<String, StreamSubscription<DatabaseEvent>> _deviceListeners = {};
   bool _isListening = false;
   Timer? _debounceTimer;
 
-  // Store last known sensor values to handle partial updates
   Map<String, double?> _lastSensorValues = {
     'mq2': null,
     'mq9': null,
     'flame': null,
   };
 
-  // Store previous alarmType per device to avoid duplicate notifications
   Map<String, String?> _previousAlarmTypes = {};
 
-  // Debounce delay to prevent too many predictions (in milliseconds)
   static const Duration _predictionDebounceDelay = Duration(seconds: 2);
 
-  // Scaler parameters from training (StandardScaler)
-  // TODO: Replace these with actual values from your training data
-  // You can get these by running: scaler.mean_ and scaler.scale_ in Python
-  // after training your model
-  // Example Python code to get these values:
-  // import joblib
-  // scaler = joblib.load("scaler.pkl")
-  // print("Mean:", scaler.mean_.tolist())
-  // print("Std:", scaler.scale_.tolist())
   List<double> _scalerMean = [
     1011.9789915966387,
     1195.7100840336134,
@@ -70,16 +41,8 @@ class FirePredictionService {
     1145.5250169101166,
   ];
 
-  // Label mapping (from LabelEncoder)
-  // TODO: Replace with actual labels from your training
-  // You can get these by running: encoder.classes_ in Python
-  // Example Python code to get these values:
-  // import joblib
-  // encoder = joblib.load("label_encoder.pkl")
-  // print("Classes:", encoder.classes_.tolist())
   List<String> _labelClasses = ['fire', 'normal', 'smoke'];
 
-  /// Load the TensorFlow Lite model from assets
   Future<bool> loadModel() async {
     if (_isModelLoaded && _interpreter != null) {
       print('Fire Prediction Service: Model already loaded');
@@ -88,11 +51,9 @@ class FirePredictionService {
 
     try {
       print('Fire Prediction Service: Loading model from assets...');
-      // Load model from assets
       final modelPath = 'assets/models/fire_model.tflite';
       _interpreter = await Interpreter.fromAsset(modelPath);
 
-      // Print model input/output details
       print('Fire Prediction Service: Model loaded successfully');
       print('Input tensor count: ${_interpreter!.getInputTensors().length}');
       print('Output tensor count: ${_interpreter!.getOutputTensors().length}');
@@ -120,13 +81,6 @@ class FirePredictionService {
     }
   }
 
-  /// Get sensor data from Firebase Realtime Database for a specific device
-  ///
-  /// The Arduino uploads sensor data to Devices/{deviceId} in RTDB.
-  /// For example, if deviceId is "Device3", it reads from Devices/Device3.
-  /// Expected sensor fields: mq2, mq9, flame (case-insensitive)
-  ///
-  /// NOTE: This method ONLY READS from RTDB, it does not write.
   Future<Map<String, double>?> getSensorData(String deviceId) async {
     try {
       final dbRef = FirebaseDatabase.instance.ref();
@@ -143,8 +97,6 @@ class FirePredictionService {
         return null;
       }
 
-      // Extract sensor values (mq2, mq9, flame)
-      // Note: Firebase uses capitalized field names: MQ2, MQ9, Flame
       final mq2 = _parseDouble(data['MQ2'] ?? data['mq2']);
       final mq9 = _parseDouble(data['MQ9'] ?? data['mq9']);
       final flame = _parseDouble(data['Flame'] ?? data['flame']);
@@ -165,7 +117,6 @@ class FirePredictionService {
     }
   }
 
-  /// Parse a value to double, handling various types
   double? _parseDouble(dynamic value) {
     if (value == null) return null;
     if (value is double) return value;
@@ -176,8 +127,6 @@ class FirePredictionService {
     return null;
   }
 
-  /// Scale sensor data using StandardScaler parameters
-  /// Formula: (x - mean) / std
   List<double> _scaleSensorData(Map<String, double> sensorData) {
     final mq2 = sensorData['mq2']!;
     final mq9 = sensorData['mq9']!;
@@ -190,8 +139,6 @@ class FirePredictionService {
     ];
   }
 
-  /// Make a prediction using the loaded model
-  /// Returns a map with 'label' (predicted class) and 'confidence' (probability)
   Future<Map<String, dynamic>?> predict(String deviceId) async {
     if (!_isModelLoaded || _interpreter == null) {
       print('Fire Prediction Service: Model not loaded. Loading now...');
@@ -202,7 +149,6 @@ class FirePredictionService {
       }
     }
 
-    // Get sensor data from Firebase
     final sensorData = await getSensorData(deviceId);
     if (sensorData == null) {
       print('Fire Prediction Service: Could not fetch sensor data');
@@ -210,29 +156,21 @@ class FirePredictionService {
     }
 
     try {
-      // Scale the sensor data
       final scaledData = _scaleSensorData(sensorData);
       print('Fire Prediction Service: Raw sensor data: $sensorData');
       print('Fire Prediction Service: Scaled data: $scaledData');
 
-      // Prepare input tensor
-      // Model expects shape [1, 3] for batch of 1 sample with 3 features
       final input = [scaledData];
 
-      // Prepare output tensor - must match the model's output shape
       final outputTensor = _interpreter!.getOutputTensors()[0];
       final outputShape = outputTensor.shape;
       print('Fire Prediction Service: Output tensor shape: $outputShape');
 
-      // Create output buffer matching the exact shape
-      // For shape [1, 3], we need [[0.0, 0.0, 0.0]]
       final output = _createOutputBuffer(outputShape);
 
-      // Run inference
       _interpreter!.run(input, output);
       print('Fire Prediction Service: Model output: $output');
 
-      // Extract probabilities from output (handle nested structure)
       final probabilities = _extractProbabilities(output, outputShape);
 
       double maxProb = probabilities[0];
@@ -244,7 +182,6 @@ class FirePredictionService {
         }
       }
 
-      // Map index to label
       final predictedLabel =
           predictedIndex < _labelClasses.length
               ? _labelClasses[predictedIndex]
@@ -263,7 +200,6 @@ class FirePredictionService {
     }
   }
 
-  /// Make a prediction with raw sensor values (for testing)
   Future<Map<String, dynamic>?> predictWithValues(
     double mq2,
     double mq9,
@@ -279,29 +215,22 @@ class FirePredictionService {
     }
 
     try {
-      // Scale the sensor data
       final sensorData = {'mq2': mq2, 'mq9': mq9, 'flame': flame};
       final scaledData = _scaleSensorData(sensorData);
       print('Fire Prediction Service: Raw sensor data: $sensorData');
       print('Fire Prediction Service: Scaled data: $scaledData');
 
-      // Prepare input tensor
       final input = [scaledData];
 
-      // Prepare output tensor - must match the model's output shape
       final outputTensor = _interpreter!.getOutputTensors()[0];
       final outputShape = outputTensor.shape;
       print('Fire Prediction Service: Output tensor shape: $outputShape');
 
-      // Create output buffer matching the exact shape
-      // For shape [1, 3], we need [[0.0, 0.0, 0.0]]
       final output = _createOutputBuffer(outputShape);
 
-      // Run inference
       _interpreter!.run(input, output);
       print('Fire Prediction Service: Model output: $output');
 
-      // Extract probabilities from output (handle nested structure)
       final probabilities = _extractProbabilities(output, outputShape);
 
       double maxProb = probabilities[0];
@@ -313,7 +242,6 @@ class FirePredictionService {
         }
       }
 
-      // Map index to label
       final predictedLabel =
           predictedIndex < _labelClasses.length
               ? _labelClasses[predictedIndex]
@@ -332,14 +260,6 @@ class FirePredictionService {
     }
   }
 
-  /// Update scaler parameters (mean and std for each feature)
-  /// Call this after getting the actual values from your training
-  ///
-  /// Example Python code to get these values:
-  /// import joblib
-  /// scaler = joblib.load("scaler.pkl")
-  /// mean = scaler.mean_.tolist() # [mq2_mean, mq9_mean, flame_mean]
-  /// std = scaler.scale_.tolist() # [mq2_std, mq9_std, flame_std]
   void updateScalerParams({
     required List<double> mean,
     required List<double> std,
@@ -356,12 +276,6 @@ class FirePredictionService {
     print('Std: $_scalerStd');
   }
 
-  /// Update label classes
-  ///
-  /// Example Python code to get these values:
-  /// import joblib
-  /// encoder = joblib.load("label_encoder.pkl")
-  /// labels = encoder.classes_.tolist() # ['normal', 'fire', ...]
   void updateLabelClasses(List<String> labels) {
     if (labels.isEmpty) {
       throw ArgumentError('Labels list cannot be empty');
@@ -372,29 +286,23 @@ class FirePredictionService {
     print('Labels: $_labelClasses');
   }
 
-  /// Create output buffer matching the model's output tensor shape
-  /// For shape [1, 3], creates [[0.0, 0.0, 0.0]]
   dynamic _createOutputBuffer(List<int> shape) {
     if (shape.isEmpty) {
       return <double>[];
     }
 
     if (shape.length == 1) {
-      // Shape is [num_classes], return flat list
       return List.generate(shape[0], (index) => 0.0);
     } else if (shape.length == 2) {
-      // Shape is [batch_size, num_classes], return nested list
       return List.generate(
         shape[0],
         (i) => List.generate(shape[1], (j) => 0.0),
       );
     } else {
-      // For higher dimensions, create nested structure recursively
       return _createNestedBuffer(shape, 0);
     }
   }
 
-  /// Recursively create nested buffer for multi-dimensional shapes
   dynamic _createNestedBuffer(List<int> shape, int index) {
     if (index == shape.length - 1) {
       return List.generate(shape[index], (i) => 0.0);
@@ -406,8 +314,6 @@ class FirePredictionService {
     }
   }
 
-  /// Extract probabilities from output based on tensor shape
-  /// Handles both flat lists and nested structures
   List<double> _extractProbabilities(dynamic output, List<int> shape) {
     if (output == null) {
       throw ArgumentError('Output cannot be null');
@@ -421,26 +327,21 @@ class FirePredictionService {
     }
 
     if (shape.length == 1) {
-      // Shape is [num_classes], output should be List<double>
       if (output is List<double>) {
         return output;
       }
       throw ArgumentError('Expected List<double> for shape $shape');
     } else if (shape.length == 2) {
-      // Shape is [batch_size, num_classes]
-      // Output should be List<List<double>>, we want the first batch
       if (output is List && output.isNotEmpty) {
         final firstBatch = output[0];
         if (firstBatch is List<double>) {
           return firstBatch;
         } else if (firstBatch is List) {
-          // Convert to List<double>
           return firstBatch.map((e) => (e as num).toDouble()).toList();
         }
       }
       throw ArgumentError('Expected List<List<double>> for shape $shape');
     } else {
-      // For higher dimensions, extract first element recursively
       dynamic current = output;
       for (int i = 0; i < shape.length - 1; i++) {
         if (current is List && current.isNotEmpty) {
@@ -459,7 +360,6 @@ class FirePredictionService {
     }
   }
 
-  /// Print prediction results in a formatted, readable way
   void printPrediction(Map<String, dynamic>? result) {
     if (result == null) {
       print('═══════════════════════════════════════════════════════');
@@ -499,17 +399,6 @@ class FirePredictionService {
     print('═══════════════════════════════════════════════════════\n');
   }
 
-  /// Test the model with specific sensor values and print results
-  /// This is a convenience method for testing
-  ///
-  /// Example:
-  /// ```dart
-  /// await FirePredictionService().testPrediction(
-  ///   mq2: 974.0,
-  ///   mq9: 1100.0,
-  ///   flame: 3200.0,
-  /// );
-  /// ```
   Future<void> testPrediction({
     required double mq2,
     required double mq9,
@@ -535,13 +424,6 @@ class FirePredictionService {
     printPrediction(result);
   }
 
-  /// Test prediction for a specific device from Firebase RTDB
-  /// and print results
-  ///
-  /// Example:
-  /// ```dart
-  /// await FirePredictionService().testDevicePrediction('Device3');
-  /// ```
   Future<void> testDevicePrediction(String deviceId) async {
     print('\n🧪 TESTING FIRE PREDICTION FOR DEVICE: $deviceId');
     print('═══════════════════════════════════════════════════════');
@@ -556,27 +438,11 @@ class FirePredictionService {
       }
     }
 
-    // Make prediction
     final result = await predict(deviceId);
 
-    // Print results
     printPrediction(result);
   }
 
-  /// Start listening to Firebase RTDB in real-time for a device
-  /// and automatically run predictions when sensor data changes
-  ///
-  /// This will listen to Devices/{deviceId} and whenever sensor data
-  /// (mq2, mq9, flame) changes, it will automatically run a prediction
-  /// and print the results.
-  ///
-  /// NOTE: This method ONLY READS from RTDB (listens to changes),
-  /// it does not write to RTDB. All predictions are saved to Firestore.
-  ///
-  /// Example:
-  /// ```dart
-  /// await FirePredictionService().startRealtimePrediction('Device3');
-  /// ```
   Future<void> startRealtimePrediction(String deviceId) async {
     // Stop any existing listener
     stopRealtimePrediction();
@@ -603,10 +469,8 @@ class FirePredictionService {
 
     final dbRef = FirebaseDatabase.instance.ref();
 
-    // Reset last known values when starting new listener
     _lastSensorValues = {'mq2': null, 'mq9': null, 'flame': null};
 
-    // Set up real-time listener
     _realtimeListener = dbRef
         .child('Devices/$deviceId')
         .onValue
@@ -626,8 +490,6 @@ class FirePredictionService {
               '📊 Real-time Prediction: Available keys: ${data.keys.toList()}',
             );
 
-            // Extract sensor values (update last known values)
-            // Note: Firebase uses capitalized field names: MQ2, MQ9, Flame
             final mq2 = _parseDouble(data['MQ2'] ?? data['mq2']);
             final mq9 = _parseDouble(data['MQ9'] ?? data['mq9']);
             final flame = _parseDouble(data['Flame'] ?? data['flame']);
@@ -639,19 +501,15 @@ class FirePredictionService {
               'Flame: ${flame?.toStringAsFixed(1) ?? "null"}',
             );
 
-            // Update last known values (keep previous if new value is null)
             if (mq2 != null) _lastSensorValues['mq2'] = mq2;
             if (mq9 != null) _lastSensorValues['mq9'] = mq9;
             if (flame != null) _lastSensorValues['flame'] = flame;
 
-            // Get the latest values (use stored values if current update is partial)
             final latestMq2 = mq2 ?? _lastSensorValues['mq2'];
             final latestMq9 = mq9 ?? _lastSensorValues['mq9'];
             final latestFlame = flame ?? _lastSensorValues['flame'];
 
-            // Check if we have all required sensor values
             if (latestMq2 == null || latestMq9 == null || latestFlame == null) {
-              // Partial update - wait for more data
               print(
                 '⏳ Real-time Prediction: Waiting for all sensor data... '
                 '(MQ2: ${latestMq2 != null ? latestMq2.toStringAsFixed(1) : "?"}, '
@@ -661,10 +519,8 @@ class FirePredictionService {
               return;
             }
 
-            // Debounce: Cancel previous timer if it exists
             _debounceTimer?.cancel();
 
-            // Set up debounce timer to prevent too many predictions
             _debounceTimer = Timer(_predictionDebounceDelay, () async {
               try {
                 print('\n🔄 Sensor data updated - Running prediction...');
@@ -674,20 +530,15 @@ class FirePredictionService {
                   'Flame: ${latestFlame.toStringAsFixed(1)}',
                 );
 
-                // Make prediction with latest sensor values
                 final result = await predictWithValues(
                   latestMq2,
                   latestMq9,
                   latestFlame,
                 );
 
-                // Print formatted prediction
                 printPrediction(result);
 
-                // Save prediction to Firestore ONLY (NOT to RTDB)
-                // RTDB is only used for reading sensor data, not storing predictions
                 if (result != null) {
-                  // Save/update prediction in Firestore (single document gets updated)
                   await _savePredictionToFirestore(deviceId, result);
                 }
               } catch (e, stackTrace) {
@@ -708,43 +559,51 @@ class FirePredictionService {
     );
   }
 
-  /// Stop listening to real-time predictions for a specific device
   void stopRealtimePrediction([String? deviceId]) {
     if (deviceId != null) {
-      // Stop specific device listener
-      _deviceListeners[deviceId]?.cancel();
+      try {
+        _deviceListeners[deviceId]?.cancel();
+      } catch (e) {
+        print('Warning: Error cancelling listener for $deviceId: $e');
+      }
       _deviceListeners.remove(deviceId);
       print('🛑 Stopped real-time prediction listener for device $deviceId');
     } else {
-      // Stop single device listener (legacy method)
       if (_realtimeListener != null) {
-        _realtimeListener!.cancel();
+        try {
+          _realtimeListener!.cancel();
+        } catch (e) {
+          print('Warning: Error cancelling realtime listener: $e');
+        }
         _realtimeListener = null;
         print('🛑 Real-time prediction listener stopped');
       }
     }
 
-    // Update listening state
     _isListening = _deviceListeners.isNotEmpty || _realtimeListener != null;
     _debounceTimer?.cancel();
     _debounceTimer = null;
 
-    // Reset stored values
     _lastSensorValues = {'mq2': null, 'mq9': null, 'flame': null};
   }
 
-  /// Stop all real-time prediction listeners
   void stopAllRealtimePredictions() {
-    // Stop all device listeners
     for (var entry in _deviceListeners.entries) {
-      entry.value.cancel();
-      print('🛑 Stopped real-time prediction listener for device ${entry.key}');
+      try {
+        entry.value.cancel();
+        print('🛑 Stopped real-time prediction listener for device ${entry.key}');
+      } catch (e) {
+        print('Warning: Error cancelling listener for ${entry.key}: $e');
+      }
     }
     _deviceListeners.clear();
 
-    // Stop single device listener (legacy)
     if (_realtimeListener != null) {
-      _realtimeListener!.cancel();
+      try {
+        _realtimeListener!.cancel();
+      } catch (e) {
+        print('Warning: Error cancelling realtime listener: $e');
+      }
       _realtimeListener = null;
     }
 
@@ -752,16 +611,11 @@ class FirePredictionService {
     _debounceTimer?.cancel();
     _debounceTimer = null;
 
-    // Reset stored values
     _lastSensorValues = {'mq2': null, 'mq9': null, 'flame': null};
     print('🛑 All real-time prediction listeners stopped');
   }
 
-  /// Internal method to start real-time prediction for a specific device
-  /// This is used by startListeningToAllUserDevices to listen to multiple devices
-  /// Only listens to devices that belong to the current user
   Future<void> _startRealtimePredictionForDevice(String deviceId) async {
-    // Don't start if already listening to this device
     if (_deviceListeners.containsKey(deviceId)) {
       print(
         'Fire Prediction Service: Already listening to device $deviceId, skipping',
@@ -771,10 +625,8 @@ class FirePredictionService {
 
     final dbRef = FirebaseDatabase.instance.ref();
 
-    // Reset last known values for this device
     _lastSensorValues = {'mq2': null, 'mq9': null, 'flame': null};
 
-    // Set up real-time listener for this device
     final listener = dbRef
         .child('Devices/$deviceId')
         .onValue
@@ -785,43 +637,34 @@ class FirePredictionService {
               return;
             }
 
-            // Extract sensor values
             final mq2 = _parseDouble(data['MQ2'] ?? data['mq2']);
             final mq9 = _parseDouble(data['MQ9'] ?? data['mq9']);
             final flame = _parseDouble(data['Flame'] ?? data['flame']);
 
-            // Update last known values
             if (mq2 != null) _lastSensorValues['mq2'] = mq2;
             if (mq9 != null) _lastSensorValues['mq9'] = mq9;
             if (flame != null) _lastSensorValues['flame'] = flame;
 
-            // Get the latest values
             final latestMq2 = mq2 ?? _lastSensorValues['mq2'];
             final latestMq9 = mq9 ?? _lastSensorValues['mq9'];
             final latestFlame = flame ?? _lastSensorValues['flame'];
 
-            // Check if we have all required sensor values
             if (latestMq2 == null || latestMq9 == null || latestFlame == null) {
               return;
             }
 
-            // Debounce: Cancel previous timer if it exists
             _debounceTimer?.cancel();
 
-            // Set up debounce timer to prevent too many predictions
             _debounceTimer = Timer(_predictionDebounceDelay, () async {
               try {
-                // Make prediction with latest sensor values
                 final result = await predictWithValues(
                   latestMq2,
                   latestMq9,
                   latestFlame,
                 );
 
-                // Print formatted prediction
                 printPrediction(result);
 
-                // Save prediction to Firestore (only for the current user's device)
                 if (result != null) {
                   await _savePredictionToFirestore(deviceId, result);
                 }
@@ -840,12 +683,6 @@ class FirePredictionService {
     print('✅ Started real-time prediction listener for device $deviceId');
   }
 
-  /// Save prediction result to Firestore under user's device collection
-  ///
-  /// NOTE: Predictions are ONLY stored in Firestore, NOT in RTDB.
-  /// RTDB is only used for reading sensor data.
-  /// The prediction is stored directly in the device document as 'alarmType'.
-  /// Path: users/{userId}/devices/{deviceId}
   Future<void> _savePredictionToFirestore(
     String deviceId,
     Map<String, dynamic> predictionResult,
@@ -857,22 +694,17 @@ class FirePredictionService {
         return;
       }
 
-      // Get the predicted label
       final predictedLabel = predictionResult['label'] as String;
       final confidence = predictionResult['confidence'] as double;
 
-      // Get previous alarmType to detect changes
       final previousAlarmType = _previousAlarmTypes[deviceId];
 
-      // Update the device document directly with alarmType field
-      // Path: users/{userId}/devices/{deviceId}
       final deviceDocRef = FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .collection('devices')
           .doc(deviceId);
 
-      // Get device data to retrieve name and address for notification
       final deviceDoc = await deviceDocRef.get();
       final deviceData = deviceDoc.data();
       final deviceName = deviceData?['name'] as String? ?? 'Your device';
@@ -910,12 +742,6 @@ class FirePredictionService {
     }
   }
 
-  /// Start listening to all devices for the current logged-in user
-  /// This will fetch all devices from the user's Firestore collection and start
-  /// real-time prediction listeners for each device
-  ///
-  /// IMPORTANT: Only listens to devices that belong to the current user
-  /// Devices are fetched from: users/{userId}/devices
   Future<void> startListeningToAllUserDevices() async {
     // Stop any existing listeners first
     stopAllRealtimePredictions();

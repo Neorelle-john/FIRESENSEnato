@@ -217,13 +217,18 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    await _localNotifications.show(
-      deviceId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
-      finalTitle,
-      finalBody,
-      details,
-      payload: deviceId,
-    );
+    try {
+      await _localNotifications.show(
+        deviceId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
+        finalTitle,
+        finalBody,
+        details,
+        payload: deviceId,
+      );
+    } catch (e) {
+      print('Error showing notification: $e');
+      // Don't rethrow - notifications are non-critical
+    }
   }
 
   /// Handle foreground messages

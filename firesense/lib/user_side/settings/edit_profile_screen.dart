@@ -704,6 +704,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       hintText: hintText,
                       hintStyle: TextStyle(color: Colors.grey.shade400),
                       suffixIcon: suffixWidget,
+                      errorStyle: const TextStyle(color: Colors.red),
                     ),
                     validator: validator,
                     style: const TextStyle(color: Color(0xFF1E1E1E)),

@@ -312,6 +312,24 @@ Stay safe!''';
                                             color: primaryRed,
                                           ),
                                         ),
+                                        errorBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          borderSide: const BorderSide(
+                                            color: Colors.red,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        focusedErrorBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          borderSide: const BorderSide(
+                                            color: Colors.red,
+                                            width: 2,
+                                          ),
+                                        ),
                                         filled: true,
                                         fillColor: Colors.grey.shade50,
                                         contentPadding: const EdgeInsets.all(

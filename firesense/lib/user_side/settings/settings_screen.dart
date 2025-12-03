@@ -10,6 +10,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firesense/credentials/signin_screen.dart';
 import 'package:firesense/services/alarm_widget.dart';
 import 'package:firesense/services/sensor_alarm_services.dart';
+import 'package:firesense/services/fire_prediction_services.dart';
 import 'package:firesense/services/notification_service.dart';
 import 'dart:async';
 
@@ -34,6 +35,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Initialize global alarm monitoring
     SensorAlarmService().startListeningToAllUserDevices();
 
+    // Initialize fire prediction service and start listening to all user devices
+    _initializeFirePredictionService();
+
     // Listen to alarm stream
     _alarmSubscription = SensorAlarmService().alarmStream.listen(
       (alarmData) {
@@ -53,6 +57,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // Load notification preference
     _loadNotificationPreference();
+  }
+
+  /// Initialize fire prediction service and start listening to all user devices
+  Future<void> _initializeFirePredictionService() async {
+    try {
+      print('SettingsScreen: Initializing fire prediction service...');
+      await FirePredictionService().startListeningToAllUserDevices();
+      print('SettingsScreen: Fire prediction service initialized successfully');
+    } catch (e, stackTrace) {
+      print('SettingsScreen: Error initializing fire prediction service: $e');
+      print('Stack trace: $stackTrace');
+      // Don't crash the app if prediction service fails to initialize
+    }
   }
 
   @override
@@ -125,6 +142,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _logout() async {
+    // Stop fire prediction service before logout
+    FirePredictionService().stopAllRealtimePredictions();
+    // Stop sensor alarm service
+    SensorAlarmService().stopListening();
+    
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(

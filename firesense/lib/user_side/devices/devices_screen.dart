@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firesense/services/alarm_widget.dart';
 import 'package:firesense/services/sensor_alarm_services.dart';
+import 'package:firesense/services/fire_prediction_services.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'dart:async';
 
@@ -31,6 +32,9 @@ class _DevicesScreenState extends State<DevicesScreen> {
     // Initialize global alarm monitoring
     SensorAlarmService().startListeningToAllUserDevices();
 
+    // Initialize fire prediction service and start listening to all user devices
+    _initializeFirePredictionService();
+
     // Listen to alarm stream
     _alarmSubscription = SensorAlarmService().alarmStream.listen(
       (alarmData) {
@@ -47,6 +51,19 @@ class _DevicesScreenState extends State<DevicesScreen> {
         // Don't crash the app on stream errors
       },
     );
+  }
+
+  /// Initialize fire prediction service and start listening to all user devices
+  Future<void> _initializeFirePredictionService() async {
+    try {
+      print('DevicesScreen: Initializing fire prediction service...');
+      await FirePredictionService().startListeningToAllUserDevices();
+      print('DevicesScreen: Fire prediction service initialized successfully');
+    } catch (e, stackTrace) {
+      print('DevicesScreen: Error initializing fire prediction service: $e');
+      print('Stack trace: $stackTrace');
+      // Don't crash the app if prediction service fails to initialize
+    }
   }
 
   @override

@@ -285,6 +285,14 @@ class _EditDeviceScreenState extends State<EditDeviceScreen> {
                             borderRadius: BorderRadius.circular(15),
                             borderSide: BorderSide(color: primaryRed, width: 2),
                           ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: const BorderSide(color: Colors.red, width: 2),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                            borderSide: const BorderSide(color: Colors.red, width: 2),
+                          ),
                         ),
                       ),
 
@@ -342,6 +350,20 @@ class _EditDeviceScreenState extends State<EditDeviceScreen> {
                                   borderRadius: BorderRadius.circular(15),
                                   borderSide: BorderSide(
                                     color: primaryRed,
+                                    width: 2,
+                                  ),
+                                ),
+                                errorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: const BorderSide(
+                                    color: Colors.red,
+                                    width: 2,
+                                  ),
+                                ),
+                                focusedErrorBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: const BorderSide(
+                                    color: Colors.red,
                                     width: 2,
                                   ),
                                 ),

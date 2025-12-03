@@ -9,6 +9,7 @@ import 'package:firesense/user_side/materials/fire_prevention_screen.dart';
 import 'package:firesense/user_side/materials/fire_checklist_screen.dart';
 import 'package:firesense/services/alarm_widget.dart';
 import 'package:firesense/services/sensor_alarm_services.dart';
+import 'package:firesense/services/fire_prediction_services.dart';
 import 'dart:async';
 
 class MaterialScreen extends StatefulWidget {
@@ -32,6 +33,9 @@ class _MaterialScreenState extends State<MaterialScreen> {
     // Initialize global alarm monitoring
     SensorAlarmService().startListeningToAllUserDevices();
 
+    // Initialize fire prediction service and start listening to all user devices
+    _initializeFirePredictionService();
+
     // Listen to alarm stream
     _alarmSubscription = SensorAlarmService().alarmStream.listen(
       (alarmData) {
@@ -48,6 +52,19 @@ class _MaterialScreenState extends State<MaterialScreen> {
         // Don't crash the app on stream errors
       },
     );
+  }
+
+  /// Initialize fire prediction service and start listening to all user devices
+  Future<void> _initializeFirePredictionService() async {
+    try {
+      print('MaterialScreen: Initializing fire prediction service...');
+      await FirePredictionService().startListeningToAllUserDevices();
+      print('MaterialScreen: Fire prediction service initialized successfully');
+    } catch (e, stackTrace) {
+      print('MaterialScreen: Error initializing fire prediction service: $e');
+      print('Stack trace: $stackTrace');
+      // Don't crash the app if prediction service fails to initialize
+    }
   }
 
   @override

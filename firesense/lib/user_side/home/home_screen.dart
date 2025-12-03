@@ -1,5 +1,6 @@
 import 'package:firesense/user_side/devices/devices_screen.dart';
 import 'package:firesense/user_side/devices/device_detail_screen.dart';
+import 'package:firesense/user_side/devices/edit_device_screen.dart';
 import 'package:firesense/user_side/materials/material_screen.dart';
 import 'package:firesense/user_side/emergency/emergency_dial_screen.dart';
 import 'package:firesense/user_side/settings/settings_screen.dart';
@@ -73,8 +74,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _alarmSubscription?.cancel();
-    // Stop fire prediction service when screen is disposed
-    FirePredictionService().stopAllRealtimePredictions();
+    // Don't stop fire prediction service here - it should run across all navigation tabs
+    // The service will be stopped when user logs out or app closes
     super.dispose();
   }
 
@@ -89,7 +90,12 @@ class _HomeScreenState extends State<HomeScreen> {
           .collection('contacts')
           .orderBy('name')
           .get()
-          .then((snapshot) => snapshot.docs);
+          .timeout(const Duration(seconds: 10))
+          .then((snapshot) => snapshot.docs)
+          .catchError((e) {
+            print('Error loading contacts: $e');
+            return <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+          });
     }
     setState(() {});
   }
@@ -1255,28 +1261,117 @@ class _DeviceStatusCardState extends State<_DeviceStatusCard> {
     }
   }
 
+  void _navigateToEditScreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditDeviceScreen(deviceId: widget.deviceId),
+      ),
+    );
+  }
+
   Future<void> _disconnectDevice() async {
+    // Show confirmation dialog with improved UI
     final confirmed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Disconnect Device'),
-            content: Text(
-              'Are you sure you want to disconnect "${widget.deviceName}"?\n\n'
-              'This will remove the device from your account.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Disconnect'),
-              ),
-            ],
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF8B0000),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.link_off_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Title
+                const Text(
+                  'Disconnect Device',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E1E1E),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Message
+                Text(
+                  'Are you sure you want to disconnect "${widget.deviceName}"?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey.shade700,
+                          side: BorderSide(color: Colors.grey.shade300),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8B0000),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Disconnect',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
 
     if (confirmed != true || !mounted) return;
@@ -1386,7 +1481,9 @@ class _DeviceStatusCardState extends State<_DeviceStatusCard> {
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                     onSelected: (value) {
-                      if (value == 'test_alarm') {
+                      if (value == 'edit') {
+                        _navigateToEditScreen();
+                      } else if (value == 'test_alarm') {
                         _toggleTestAlarm();
                       } else if (value == 'disconnect') {
                         _disconnectDevice();
@@ -1394,6 +1491,24 @@ class _DeviceStatusCardState extends State<_DeviceStatusCard> {
                     },
                     itemBuilder:
                         (context) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.edit,
+                                  color: Colors.black87,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Edit Device',
+                                  style: TextStyle(fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuDivider(),
                           PopupMenuItem(
                             value: 'test_alarm',
                             child: Row(
@@ -1425,14 +1540,14 @@ class _DeviceStatusCardState extends State<_DeviceStatusCard> {
                               children: [
                                 Icon(
                                   Icons.link_off,
-                                  color: Colors.red,
+                                  color: Color(0xFF8B0000),
                                   size: 20,
                                 ),
                                 SizedBox(width: 12),
                                 Text(
                                   'Disconnect Device',
                                   style: TextStyle(
-                                    color: Colors.red,
+                                    color: Color(0xFF8B0000),
                                     fontSize: 14,
                                   ),
                                 ),

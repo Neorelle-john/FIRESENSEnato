@@ -467,6 +467,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
                 ),
                 const SizedBox(height: 16),
                 Card(
+                  color: Colors.white,
                   elevation: 3,
                   shadowColor: Colors.black12,
                   shape: RoundedRectangleBorder(
@@ -493,6 +494,20 @@ class _AddContactScreenState extends State<AddContactScreen> {
                               border: border,
                               enabledBorder: border,
                               focusedBorder: border,
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Colors.red,
+                                  width: 2,
+                                ),
+                              ),
+                              focusedErrorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Colors.red,
+                                  width: 2,
+                                ),
+                              ),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                                 vertical: 18,
@@ -521,6 +536,20 @@ class _AddContactScreenState extends State<AddContactScreen> {
                               border: border,
                               enabledBorder: border,
                               focusedBorder: border,
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Colors.red,
+                                  width: 2,
+                                ),
+                              ),
+                              focusedErrorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Colors.red,
+                                  width: 2,
+                                ),
+                              ),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                                 vertical: 18,
@@ -548,6 +577,20 @@ class _AddContactScreenState extends State<AddContactScreen> {
                               border: border,
                               enabledBorder: border,
                               focusedBorder: border,
+                              errorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Colors.red,
+                                  width: 2,
+                                ),
+                              ),
+                              focusedErrorBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: Colors.red,
+                                  width: 2,
+                                ),
+                              ),
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                                 vertical: 18,
