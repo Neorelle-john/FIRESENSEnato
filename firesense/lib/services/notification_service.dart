@@ -144,6 +144,7 @@ class NotificationService {
     required String body,
     String? deviceId,
     bool? isAdmin, // Optional parameter to explicitly indicate admin
+    Map<String, dynamic>? sensorAnalysis, // Optional sensor analysis data
   }) async {
     if (!_notificationsEnabled) {
       print('Notifications are disabled, skipping notification');
@@ -168,6 +169,35 @@ class NotificationService {
     String finalTitle = title;
     String finalBody = body;
 
+    // Add sensor analysis to notification body if available (for non-admin users)
+    if (!userIsAdmin && sensorAnalysis != null) {
+      try {
+        final List<String> analysisParts = [];
+        
+        if (sensorAnalysis.containsKey('primaryTrigger') &&
+            sensorAnalysis['primaryTrigger'] != null) {
+          analysisParts.add(
+            'Trigger: ${sensorAnalysis['primaryTrigger']}',
+          );
+        }
+        
+        if (sensorAnalysis.containsKey('abnormalSensors') &&
+            sensorAnalysis['abnormalSensors'] != null) {
+          final abnormalSensors = sensorAnalysis['abnormalSensors'];
+          if (abnormalSensors is List && abnormalSensors.isNotEmpty) {
+            analysisParts.add('Sensors: ${abnormalSensors.join(", ")}');
+          }
+        }
+        
+        if (analysisParts.isNotEmpty) {
+          finalBody = '$body\n\n${analysisParts.join(" | ")}';
+        }
+      } catch (e) {
+        print('Notification Service: Error formatting sensor analysis: $e');
+        // Continue with original body if formatting fails
+      }
+    }
+
     if (userIsAdmin) {
       // Admin-specific notification
       finalTitle = 'Alert Detected';
@@ -186,7 +216,7 @@ class NotificationService {
         finalBody = 'New alert requires your attention. Tap to view details.';
       }
     }
-    // For regular users, use the provided title and body as-is
+    // For regular users, use the provided title and body (with sensor analysis if available)
 
     // Use BigTextStyleInformation for Android to show full message in expandable notifications
     final AndroidNotificationDetails androidDetails =

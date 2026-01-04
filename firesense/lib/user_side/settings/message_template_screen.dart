@@ -72,6 +72,11 @@ My location: [LOCATION]
 Time: [TIME]
 Date: [DATE]
 
+🔥 FIRE DETECTION DETAILS:
+Primary Trigger: [PRIMARY_TRIGGER]
+Abnormal Sensors: [ABNORMAL_SENSORS]
+Analysis: [SENSOR_ANALYSIS]
+
 Please respond to this message to confirm you received it.
 
 Stay safe!''';
@@ -419,6 +424,14 @@ Stay safe!''';
                                 ),
                                 const SizedBox(height: 16),
                                 _buildVariableInfo(
+                                  '[DEVICE_NAME]',
+                                  'Name of the device that triggered the alarm',
+                                ),
+                                _buildVariableInfo(
+                                  '[DEVICE_ID]',
+                                  'Unique identifier of the device',
+                                ),
+                                _buildVariableInfo(
                                   '[LOCATION]',
                                   'Your current GPS location',
                                 ),
@@ -429,6 +442,102 @@ Stay safe!''';
                                 _buildVariableInfo(
                                   '[DATE]',
                                   'Current date when message is sent',
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: primaryRed.withOpacity(0.05),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: primaryRed.withOpacity(0.2),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.warning_amber_rounded,
+                                            color: primaryRed,
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Fire Detection Variables',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                              color: primaryRed,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _buildVariableInfo(
+                                        '[PRIMARY_TRIGGER]',
+                                        'Sensor that primarily triggered the fire detection (MQ2, MQ9, or Flame). Example: "FLAME"',
+                                      ),
+                                      _buildVariableInfo(
+                                        '[ABNORMAL_SENSORS]',
+                                        'List of sensors showing abnormal readings. Example: "MQ9, Flame" or "None"',
+                                      ),
+                                      _buildVariableInfo(
+                                        '[SENSOR_ANALYSIS]',
+                                        'Detailed analysis explaining what triggered the fire detection. Example: "Multiple sensors showing abnormal readings: MQ9, Flame. Primary trigger: FLAME (62.6% contribution)."',
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: primaryRed.withOpacity(0.08),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: primaryRed.withOpacity(0.3),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.info_outline,
+                                                  color: primaryRed,
+                                                  size: 16,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  'Example Output:',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 12,
+                                                    color: primaryRed,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              '🔥 FIRE DETECTION DETAILS:\n'
+                                              'Primary Trigger: FLAME\n'
+                                              'Abnormal Sensors: MQ9, Flame\n'
+                                              'Analysis: Multiple sensors showing abnormal readings: MQ9, Flame. Primary trigger: FLAME (62.6% contribution).',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey.shade700,
+                                                height: 1.4,
+                                                fontFamily: 'monospace',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(

@@ -5,6 +5,7 @@ class AlarmOverlay extends StatelessWidget {
   final String? deviceId;
   final VoidCallback onClose;
   final VoidCallback? onOpenAlert; // Optional callback for admin side
+  final Map<String, dynamic>? sensorAnalysis; // Sensor analysis data
 
   const AlarmOverlay({
     super.key,
@@ -12,6 +13,7 @@ class AlarmOverlay extends StatelessWidget {
     this.deviceId,
     required this.onClose,
     this.onOpenAlert,
+    this.sensorAnalysis,
   });
 
   String _getAlarmMessage() {
@@ -89,6 +91,75 @@ class AlarmOverlay extends StatelessWidget {
                         overflow: TextOverflow.clip,
                       ),
                     ),
+                    // Sensor Analysis Section (if available)
+                    if (sensorAnalysis != null) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: primaryRed.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: primaryRed.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.sensors,
+                                  color: primaryRed,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  "Fire Detection Details:",
+                                  style: TextStyle(
+                                    color: Color(0xFF1E1E1E),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            if (sensorAnalysis != null &&
+                                sensorAnalysis!.containsKey('primaryTrigger') &&
+                                sensorAnalysis!['primaryTrigger'] != null)
+                              _buildDetailRow(
+                                'Primary Trigger:',
+                                sensorAnalysis!['primaryTrigger']?.toString() ?? 'Unknown',
+                              ),
+                            if (sensorAnalysis != null &&
+                                sensorAnalysis!.containsKey('abnormalSensors') &&
+                                sensorAnalysis!['abnormalSensors'] != null)
+                              _buildDetailRow(
+                                'Abnormal Sensors:',
+                                sensorAnalysis!['abnormalSensors'] is List
+                                    ? (sensorAnalysis!['abnormalSensors'] as List)
+                                        .join(', ')
+                                    : sensorAnalysis!['abnormalSensors']?.toString() ?? 'None',
+                              ),
+                            if (sensorAnalysis != null &&
+                                sensorAnalysis!.containsKey('analysis') &&
+                                sensorAnalysis!['analysis'] != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                sensorAnalysis!['analysis']?.toString() ?? '',
+                                style: const TextStyle(
+                                  color: Color(0xFF4A4A4A),
+                                  fontSize: 12,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     // Emergency Instructions
                     Container(
@@ -177,6 +248,38 @@ class AlarmOverlay extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF4A4A4A),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Color(0xFF1E1E1E),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

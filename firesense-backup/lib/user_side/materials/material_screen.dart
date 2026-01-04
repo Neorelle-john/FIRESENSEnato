@@ -1,0 +1,762 @@
+import 'package:firesense/user_side/contacts/add_contact_screen.dart';
+import 'package:firesense/user_side/contacts/contacts_list_screen.dart';
+import 'package:firesense/user_side/devices/devices_screen.dart';
+import 'package:firesense/user_side/settings/settings_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:firesense/user_side/emergency/emergency_dial_screen.dart';
+import 'package:firesense/user_side/home/home_screen.dart';
+import 'package:firesense/user_side/materials/fire_prevention_screen.dart';
+import 'package:firesense/user_side/materials/fire_checklist_screen.dart';
+import 'package:firesense/services/alarm_widget.dart';
+import 'package:firesense/services/sensor_alarm_services.dart';
+import 'package:firesense/services/fire_prediction_services.dart';
+import 'dart:async';
+
+class MaterialScreen extends StatefulWidget {
+  const MaterialScreen({Key? key}) : super(key: key);
+
+  @override
+  State<MaterialScreen> createState() => _MaterialScreenState();
+}
+
+class _MaterialScreenState extends State<MaterialScreen> {
+  // 0 = News and Articles, 1 = Secondary Resources
+  int selectedCategory = 0;
+  StreamSubscription? _alarmSubscription;
+  bool _showAlarm = false;
+  String? _alarmDeviceName;
+  String? _alarmDeviceId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize global alarm monitoring
+    SensorAlarmService().startListeningToAllUserDevices();
+
+    // Initialize fire prediction service and start listening to all user devices
+    _initializeFirePredictionService();
+
+    // Listen to alarm stream
+    _alarmSubscription = SensorAlarmService().alarmStream.listen(
+      (alarmData) {
+        if (mounted) {
+          setState(() {
+            _showAlarm = true;
+            _alarmDeviceName = alarmData['deviceName'];
+            _alarmDeviceId = alarmData['deviceId'];
+          });
+        }
+      },
+      onError: (error) {
+        print('Alarm stream error in MaterialScreen: $error');
+        // Don't crash the app on stream errors
+      },
+    );
+  }
+
+  /// Initialize fire prediction service and start listening to all user devices
+  Future<void> _initializeFirePredictionService() async {
+    try {
+      print('MaterialScreen: Initializing fire prediction service...');
+      await FirePredictionService().startListeningToAllUserDevices();
+      print('MaterialScreen: Fire prediction service initialized successfully');
+    } catch (e, stackTrace) {
+      print('MaterialScreen: Error initializing fire prediction service: $e');
+      print('Stack trace: $stackTrace');
+      // Don't crash the app if prediction service fails to initialize
+    }
+  }
+
+  @override
+  void dispose() {
+    _alarmSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Color primaryRed = const Color(0xFF8B0000);
+    final Color lightGrey = const Color(0xFFF5F5F5);
+    final Color cardWhite = Colors.white;
+
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: lightGrey,
+          appBar: AppBar(
+            backgroundColor: lightGrey,
+            elevation: 0,
+            flexibleSpace: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [lightGrey, lightGrey.withOpacity(0.95)],
+                ),
+              ),
+            ),
+            title: Row(
+              children: [
+                const Text(
+                  'Materials',
+                  style: TextStyle(
+                    color: Color(0xFF8B0000),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.people, color: Colors.black87),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ContactsListScreen(),
+                    ),
+                  );
+                },
+              ),
+              IconButton(
+                icon: Icon(Icons.person_add, color: Colors.black87),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AddContactScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+            automaticallyImplyLeading: false,
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Enhanced Categories Header
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'Categories',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1E1E1E),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildCategoryButton(
+                            title: 'News and Articles',
+                            icon: Icons.article_outlined,
+                            isSelected: selectedCategory == 0,
+                            onTap: () => setState(() => selectedCategory = 0),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildCategoryButton(
+                            title: 'Secondary Resources',
+                            icon: Icons.library_books_outlined,
+                            isSelected: selectedCategory == 1,
+                            onTap: () => setState(() => selectedCategory = 1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                if (selectedCategory == 0) ...[
+                  // Enhanced News and Articles
+                  _buildNewsCard(
+                    title: 'A fire destroys homes in Tondo Manila',
+                    subtitle:
+                        'Manila Fire: Inferno destroys thousands of shanties in isla puting bato',
+                    content:
+                        'A massive fire broke out in the early hours of the morning, engulfing hundreds of homes in the densely populated area.',
+                    category: 'Breaking News',
+                    timeAgo: '2 hours ago',
+                    icon: Icons.local_fire_department,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildNewsCard(
+                    title: 'A three storey building burned down',
+                    subtitle:
+                        'A fire engulfed a three storey building in Manila in just 20 minutes',
+                    content:
+                        'The fire started on the ground floor of the commercial building and quickly spread upward through the stairwells.',
+                    category: 'Emergency',
+                    timeAgo: '5 hours ago',
+                    icon: Icons.warning_amber_outlined,
+                  ),
+                ] else ...[
+                  // Enhanced Secondary Resources - wrapped in error boundary
+                  Builder(
+                    builder: (context) {
+                      try {
+                        return Column(
+                          children: [
+                            _buildResourceCard(
+                              imageUrl: '', // Not used anymore
+                              title: 'Fire Prevention',
+                              description:
+                                  'Essential fire safety tips and prevention measures',
+                              category: 'Safety Guide',
+                              isInteractive: true,
+                              onTap: () {
+                                if (mounted) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) =>
+                                              const FirePreventionScreen(),
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: Icons.local_fire_department,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildResourceCard(
+                              imageUrl: '', // Not used anymore
+                              title: 'Fire Safety Checklist',
+                              description:
+                                  'A comprehensive guide to check for your safety',
+                              category: 'Checklist',
+                              isInteractive: true,
+                              onTap: () {
+                                if (mounted) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) =>
+                                              const FireChecklistScreen(),
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: Icons.checklist,
+                              color: Colors.orange,
+                            ),
+                          ],
+                        );
+                      } catch (e, stackTrace) {
+                        // Catch any unexpected errors in secondary resources
+                        print('Error building secondary resources: $e');
+                        print('Stack trace: $stackTrace');
+                        return Container(
+                          padding: const EdgeInsets.all(20),
+                          margin: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.error_outline,
+                                color: Colors.grey.shade400,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Unable to load resources',
+                                style: TextStyle(
+                                  color: Colors.grey.shade700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
+                const SizedBox(
+                  height: 100,
+                ), // Extra space for bottom navigation
+              ],
+            ),
+          ),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: cardWhite,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 8,
+                  offset: Offset(0, -2),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: BottomNavigationBar(
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              selectedItemColor: primaryRed,
+              unselectedItemColor: Colors.black54,
+              showSelectedLabels: true,
+              showUnselectedLabels: true,
+              currentIndex: 1,
+              onTap: (index) {
+                if (index == 0) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const HomeScreen()),
+                  );
+                } else if (index == 1) {
+                  // Already on Materials
+                } else if (index == 2) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DevicesScreen(),
+                    ),
+                  );
+                } else if (index == 3) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EmergencyDialScreen(),
+                    ),
+                  );
+                } else if (index == 4) {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                }
+              },
+              items: const [
+                BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.menu_book),
+                  label: 'Materials',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.sensors),
+                  label: 'Devices',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.phone_in_talk),
+                  label: 'Emergency Dial',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings),
+                  label: 'Settings',
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_showAlarm)
+          AlarmOverlay(
+            deviceName: _alarmDeviceName,
+            deviceId: _alarmDeviceId,
+            onClose: () {
+              setState(() {
+                _showAlarm = false;
+              });
+              SensorAlarmService().clearAlarm();
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryButton({
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final Color primaryRed = const Color(0xFF8B0000);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          decoration: BoxDecoration(
+            gradient:
+                isSelected
+                    ? LinearGradient(
+                      colors: [primaryRed, primaryRed.withOpacity(0.8)],
+                    )
+                    : null,
+            color: isSelected ? null : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? primaryRed : Colors.grey.shade300,
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color:
+                    isSelected
+                        ? primaryRed.withOpacity(0.3)
+                        : Colors.black.withOpacity(0.05),
+                blurRadius: isSelected ? 12 : 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.white : primaryRed,
+                size: 24,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : const Color(0xFF1E1E1E),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNewsCard({
+    required String title,
+    required String subtitle,
+    required String content,
+    required String category,
+    required String timeAgo,
+    required IconData icon,
+  }) {
+    final Color primaryRed = const Color(0xFF8B0000);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with category and time
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primaryRed,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryRed.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, color: Colors.white, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        category,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    timeAgo,
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Title
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Color(0xFF1E1E1E),
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Subtitle
+            Text(
+              subtitle,
+              style: TextStyle(
+                fontSize: 15,
+                color: primaryRed,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Content
+            Text(
+              content,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade700,
+                height: 1.5,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Read More section
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primaryRed.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.visibility, color: primaryRed, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Read More',
+                        style: TextStyle(
+                          color: primaryRed,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResourceCard({
+    required String imageUrl,
+    required String title,
+    required String description,
+    required String category,
+    required bool isInteractive,
+    VoidCallback? onTap,
+    required IconData icon,
+    required Color color,
+  }) {
+    final Color primaryRed = const Color(0xFF8B0000);
+
+    Widget cardContent = Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with category
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primaryRed,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryRed.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, color: Colors.white, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        category,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Title
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: Color(0xFF1E1E1E),
+                height: 1.3,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Description (as subtitle)
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 15,
+                color: primaryRed,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Read More section
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primaryRed.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.visibility, color: primaryRed, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        isInteractive ? 'Tap to read more' : 'Coming Soon',
+                        style: TextStyle(
+                          color: primaryRed,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (isInteractive && onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: cardContent,
+        ),
+      );
+    }
+
+    return cardContent;
+  }
+}

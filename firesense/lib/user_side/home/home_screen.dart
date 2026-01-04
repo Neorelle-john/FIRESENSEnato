@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showAlarm = false;
   String? _alarmDeviceName;
   String? _alarmDeviceId;
+  Map<String, dynamic>? _alarmSensorAnalysis;
 
   @override
   void initState() {
@@ -42,13 +43,50 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // Listen to alarm stream
     _alarmSubscription = SensorAlarmService().alarmStream.listen(
-      (alarmData) {
+      (alarmData) async {
         if (mounted) {
-          setState(() {
-            _showAlarm = true;
-            _alarmDeviceName = alarmData['deviceName'];
-            _alarmDeviceId = alarmData['deviceId'];
-          });
+          final deviceId = alarmData['deviceId'];
+          final deviceName = alarmData['deviceName'];
+          
+          // Fetch sensor analysis for this device
+          Map<String, dynamic>? sensorAnalysis;
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null && deviceId != null) {
+            try {
+              final deviceDoc = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('devices')
+                  .doc(deviceId)
+                  .get()
+                  .timeout(const Duration(seconds: 5));
+
+              if (deviceDoc.exists) {
+                final data = deviceDoc.data()!;
+                if (data.containsKey('lastPrediction') &&
+                    data['lastPrediction'] != null) {
+                  final lastPrediction = data['lastPrediction'] as Map<String, dynamic>?;
+                  if (lastPrediction != null &&
+                      lastPrediction.containsKey('sensorAnalysis') &&
+                      lastPrediction['sensorAnalysis'] != null) {
+                    sensorAnalysis = lastPrediction['sensorAnalysis'] as Map<String, dynamic>?;
+                  }
+                }
+              }
+            } catch (e) {
+              print('HomeScreen: Error fetching sensor analysis: $e');
+              // Continue without sensor analysis - not critical
+            }
+          }
+
+          if (mounted) {
+            setState(() {
+              _showAlarm = true;
+              _alarmDeviceName = deviceName;
+              _alarmDeviceId = deviceId;
+              _alarmSensorAnalysis = sensorAnalysis;
+            });
+          }
         }
       },
       onError: (error) {
@@ -1051,9 +1089,11 @@ class _HomeScreenState extends State<HomeScreen> {
           AlarmOverlay(
             deviceName: _alarmDeviceName,
             deviceId: _alarmDeviceId,
+            sensorAnalysis: _alarmSensorAnalysis,
             onClose: () {
               setState(() {
                 _showAlarm = false;
+                _alarmSensorAnalysis = null;
               });
               SensorAlarmService().clearAlarm();
             },

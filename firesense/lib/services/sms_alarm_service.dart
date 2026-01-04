@@ -16,6 +16,7 @@ class SmsAlarmService {
     required String deviceName,
     required String deviceId,
     Map<String, double>? deviceLocation,
+    Map<String, dynamic>? sensorAnalysis,
   }) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -30,6 +31,7 @@ class SmsAlarmService {
           deviceName: deviceName,
           deviceId: deviceId,
           deviceLocation: deviceLocation,
+          sensorAnalysis: sensorAnalysis,
         ),
         Future.delayed(const Duration(seconds: 25), () {
           print('SMS Service: Overall operation timed out after 25 seconds');
@@ -51,6 +53,7 @@ class SmsAlarmService {
     required String deviceName,
     required String deviceId,
     Map<String, double>? deviceLocation,
+    Map<String, dynamic>? sensorAnalysis,
   }) async {
     try {
       final messageTemplate = await _getMessageTemplate(
@@ -70,6 +73,7 @@ class SmsAlarmService {
         deviceName: deviceName,
         deviceId: deviceId,
         deviceLocation: deviceLocation,
+        sensorAnalysis: sensorAnalysis,
       );
 
       final List<String> formattedNumbers = [];
@@ -182,6 +186,7 @@ class SmsAlarmService {
     required String deviceName,
     required String deviceId,
     Map<String, double>? deviceLocation,
+    Map<String, dynamic>? sensorAnalysis,
   }) {
     final now = DateTime.now();
     final time =
@@ -200,12 +205,50 @@ class SmsAlarmService {
           'Lat: ${lat.toStringAsFixed(6)}, Lng: ${lng.toStringAsFixed(6)}';
     }
 
+    // Format sensor analysis variables
+    String primaryTrigger = 'Unknown';
+    String sensorAnalysisText = 'Not available';
+    String abnormalSensors = 'None';
+
+    if (sensorAnalysis != null) {
+      try {
+        // Primary trigger
+        if (sensorAnalysis.containsKey('primaryTrigger') &&
+            sensorAnalysis['primaryTrigger'] != null) {
+          primaryTrigger = sensorAnalysis['primaryTrigger'].toString();
+        }
+
+        // Sensor analysis text
+        if (sensorAnalysis.containsKey('analysis') &&
+            sensorAnalysis['analysis'] != null) {
+          sensorAnalysisText = sensorAnalysis['analysis'].toString();
+        }
+
+        // Abnormal sensors
+        if (sensorAnalysis.containsKey('abnormalSensors') &&
+            sensorAnalysis['abnormalSensors'] != null) {
+          final abnormalList = sensorAnalysis['abnormalSensors'];
+          if (abnormalList is List && abnormalList.isNotEmpty) {
+            abnormalSensors = abnormalList.join(', ');
+          } else if (abnormalList is List && abnormalList.isEmpty) {
+            abnormalSensors = 'None';
+          }
+        }
+      } catch (e) {
+        print('SMS Service: Error formatting sensor analysis: $e');
+        // Use default values if formatting fails
+      }
+    }
+
     return template
         .replaceAll('[DEVICE_NAME]', deviceName)
         .replaceAll('[DEVICE_ID]', deviceId)
         .replaceAll('[LOCATION]', location)
         .replaceAll('[TIME]', time)
-        .replaceAll('[DATE]', date);
+        .replaceAll('[DATE]', date)
+        .replaceAll('[PRIMARY_TRIGGER]', primaryTrigger)
+        .replaceAll('[SENSOR_ANALYSIS]', sensorAnalysisText)
+        .replaceAll('[ABNORMAL_SENSORS]', abnormalSensors);
   }
 
   /// Default emergency message body
@@ -220,7 +263,12 @@ Device: [DEVICE_NAME]
 Device ID: [DEVICE_ID]
 Location: [LOCATION]
 Time: [TIME]
-Date: [DATE]''';
+Date: [DATE]
+
+Fire Detection Details:
+Primary Trigger: [PRIMARY_TRIGGER]
+Abnormal Sensors: [ABNORMAL_SENSORS]
+Analysis: [SENSOR_ANALYSIS]''';
   }
 
   Future<Map<String, int>> _sendSmsViaSemaphore(

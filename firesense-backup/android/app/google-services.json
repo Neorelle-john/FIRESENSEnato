@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "723846595023",
+    "firebase_url": "https://firesense-91cda-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "firesense-91cda",
+    "storage_bucket": "firesense-91cda.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723846595023:android:2ef2829c262ae08ded12ba",
+        "android_client_info": {
+          "package_name": "com.example.firesense"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAMCD0dIRbF4-aucf6UvcDEd-tT5tdSwVI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

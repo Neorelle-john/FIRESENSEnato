@@ -30,9 +30,8 @@ class SensorAlarmService {
 
   static const Duration _maxOperationTimeout = Duration(seconds: 15);
 
-
   void startListeningToAllUserDevices() {
-    stopListening(); 
+    stopListening();
 
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -238,9 +237,41 @@ class SensorAlarmService {
     _listeners.add(listener);
   }
 
-  void _processAlarmActions(String deviceId, String deviceName) {
+  void _processAlarmActions(String deviceId, String deviceName) async {
     final user = FirebaseAuth.instance.currentUser;
     final isAdmin = user?.email == 'admin@gmail.com';
+
+    // Fetch sensor analysis from device's last prediction
+    Map<String, dynamic>? sensorAnalysis;
+    if (!isAdmin && user != null) {
+      try {
+        final deviceDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('devices')
+            .doc(deviceId)
+            .get()
+            .timeout(const Duration(seconds: 5));
+
+        if (deviceDoc.exists) {
+          final data = deviceDoc.data()!;
+          if (data.containsKey('lastPrediction') &&
+              data['lastPrediction'] != null) {
+            final lastPrediction =
+                data['lastPrediction'] as Map<String, dynamic>?;
+            if (lastPrediction != null &&
+                lastPrediction.containsKey('sensorAnalysis') &&
+                lastPrediction['sensorAnalysis'] != null) {
+              sensorAnalysis =
+                  lastPrediction['sensorAnalysis'] as Map<String, dynamic>?;
+            }
+          }
+        }
+      } catch (e) {
+        print('Sensor Alarm Service: Error fetching sensor analysis: $e');
+        // Continue without sensor analysis - not critical
+      }
+    }
 
     Future.microtask(() async {
       try {
@@ -255,7 +286,7 @@ class SensorAlarmService {
               )
               .timeout(_maxOperationTimeout);
         } else {
-          // User notification
+          // User notification with sensor analysis
           await NotificationService()
               .showNotification(
                 title: '🔥 Fire Alarm Triggered',
@@ -263,6 +294,7 @@ class SensorAlarmService {
                     'Fire detected by $deviceName. Please evacuate immediately!',
                 deviceId: deviceId,
                 isAdmin: false,
+                sensorAnalysis: sensorAnalysis,
               )
               .timeout(_maxOperationTimeout);
         }
@@ -271,29 +303,31 @@ class SensorAlarmService {
       }
     });
     
-    // Future.delayed(const Duration(milliseconds: 500), () {
-    //   Future.microtask(() async {
-    //     try {
-    //       final user = FirebaseAuth.instance.currentUser;
-    //       if (user != null) {
-    //         // Check if this device belongs to the current user (with timeout)
-    //         final deviceDoc = await FirebaseFirestore.instance
-    //             .collection('users')
-    //             .doc(user.uid)
-    //             .collection('devices')
-    //             .doc(deviceId)
-    //             .get()
-    //             .timeout(const Duration(seconds: 5));
-    //
-    //         if (deviceDoc.exists) {
-    //           await _sendAlarmSms(deviceId, deviceName);
-    //         }
-    //       }
-    //     } catch (error) {
-    //       print('Sensor Alarm Service: Error in SMS sending: $error');
-    //     }
-    //   });
-    // });
+    if (!isAdmin) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        Future.microtask(() async {
+          try {
+            final user = FirebaseAuth.instance.currentUser;
+            if (user != null) {
+              // Check if this device belongs to the current user (with timeout)
+              final deviceDoc = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('devices')
+                  .doc(deviceId)
+                  .get()
+                  .timeout(const Duration(seconds: 5));
+
+              if (deviceDoc.exists) {
+                await _sendAlarmSms(deviceId, deviceName);
+              }
+            }
+          } catch (error) {
+            print('Sensor Alarm Service: Error in SMS sending: $error');
+          }
+        });
+      });
+    }
 
     Future.delayed(const Duration(milliseconds: 1000), () {
       Future.microtask(() async {
@@ -331,8 +365,9 @@ class SensorAlarmService {
         return;
       }
 
-      // Get device location from Firestore
+      // Get device location and sensor analysis from Firestore
       Map<String, double>? deviceLocation;
+      Map<String, dynamic>? sensorAnalysis;
       try {
         final deviceDoc = await FirebaseFirestore.instance
             .collection('users')
@@ -344,6 +379,8 @@ class SensorAlarmService {
 
         if (deviceDoc.exists) {
           final data = deviceDoc.data()!;
+
+          // Get location
           final lat = data['lat'];
           final lng = data['lng'];
           if (lat != null && lng != null) {
@@ -352,13 +389,27 @@ class SensorAlarmService {
               'lng': (lng as num).toDouble(),
             };
           }
+
+          // Get sensor analysis from last prediction
+          if (data.containsKey('lastPrediction') &&
+              data['lastPrediction'] != null) {
+            final lastPrediction =
+                data['lastPrediction'] as Map<String, dynamic>?;
+            if (lastPrediction != null &&
+                lastPrediction.containsKey('sensorAnalysis') &&
+                lastPrediction['sensorAnalysis'] != null) {
+              sensorAnalysis =
+                  lastPrediction['sensorAnalysis'] as Map<String, dynamic>?;
+              print('SMS Alarm: Found sensor analysis for device $deviceId');
+            }
+          }
         }
       } on TimeoutException catch (e) {
-        print('SMS Alarm: Timeout fetching device location: $e');
-        // Continue without location - not critical
+        print('SMS Alarm: Timeout fetching device data: $e');
+        // Continue without location/analysis - not critical
       } catch (e) {
-        print('SMS Alarm: Error fetching device location: $e');
-        // Continue without location - not critical
+        print('SMS Alarm: Error fetching device data: $e');
+        // Continue without location/analysis - not critical
       }
 
       // Send SMS using SMS Alarm Service with timeout (SMS service has internal 25s timeout)
@@ -368,6 +419,7 @@ class SensorAlarmService {
             deviceName: deviceName,
             deviceId: deviceId,
             deviceLocation: deviceLocation,
+            sensorAnalysis: sensorAnalysis,
           )
           .timeout(const Duration(seconds: 20));
 

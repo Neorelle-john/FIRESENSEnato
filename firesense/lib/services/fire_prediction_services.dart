@@ -20,6 +20,12 @@ class FirePredictionService {
   bool _isListening = false;
   Timer? _debounceTimer;
 
+  // Per-device debounce timers to prevent interference between devices
+  Map<String, Timer> _deviceDebounceTimers = {};
+
+  // Per-device last sensor values to track each device independently
+  Map<String, Map<String, double?>> _deviceLastSensorValues = {};
+
   Map<String, double?> _lastSensorValues = {
     'mq2': null,
     'mq9': null,
@@ -139,6 +145,210 @@ class FirePredictionService {
     ];
   }
 
+  /// Analyzes which sensor(s) contributed most to the fire prediction
+  /// Returns a map with contribution scores and analysis for each sensor
+  /// Includes comprehensive error handling to prevent crashes
+  Map<String, dynamic>? _analyzeSensorContributions(
+    Map<String, double> sensorData,
+    String predictedLabel,
+  ) {
+    try {
+      // Validate input data
+      if (sensorData.isEmpty) {
+        print('⚠️ Sensor analysis: Empty sensor data provided');
+        return null;
+      }
+
+      final mq2 = sensorData['mq2'];
+      final mq9 = sensorData['mq9'];
+      final flame = sensorData['flame'];
+
+      // Check for null or invalid values
+      if (mq2 == null || mq9 == null || flame == null) {
+        print('⚠️ Sensor analysis: Missing sensor values');
+        return null;
+      }
+
+      // Check for NaN or infinite values
+      if (mq2.isNaN || mq2.isInfinite ||
+          mq9.isNaN || mq9.isInfinite ||
+          flame.isNaN || flame.isInfinite) {
+        print('⚠️ Sensor analysis: Invalid sensor values (NaN or Infinite)');
+        return null;
+      }
+
+      // Validate scaler parameters
+      if (_scalerMean.length != 3 || _scalerStd.length != 3) {
+        print('⚠️ Sensor analysis: Invalid scaler parameters');
+        return null;
+      }
+
+      // Check for zero standard deviation (would cause division by zero)
+      if (_scalerStd[0] == 0 || _scalerStd[1] == 0 || _scalerStd[2] == 0) {
+        print('⚠️ Sensor analysis: Zero standard deviation detected');
+        return null;
+      }
+
+      // Normal/baseline values (using scaler means as reference)
+      final normalValues = {
+        'mq2': _scalerMean[0],   // ~1012
+        'mq9': _scalerMean[1],   // ~1196
+        'flame': _scalerMean[2], // ~2018
+      };
+
+      // Calculate scaled data (deviation in standard deviations)
+      List<double> scaledData;
+      try {
+        scaledData = _scaleSensorData(sensorData);
+      } catch (e) {
+        print('⚠️ Sensor analysis: Error scaling sensor data: $e');
+        return null;
+      }
+
+      // Calculate absolute deviations from normal (in standard deviations)
+      final deviations = {
+        'mq2': scaledData[0].abs(),
+        'mq9': scaledData[1].abs(),
+        'flame': scaledData[2].abs(),
+      };
+
+      // Calculate percentage deviation from normal (with safety checks)
+      final percentageDeviations = <String, double>{};
+      try {
+        final mq2Normal = normalValues['mq2']!;
+        final mq9Normal = normalValues['mq9']!;
+        final flameNormal = normalValues['flame']!;
+
+        if (mq2Normal != 0) {
+          percentageDeviations['mq2'] =
+              ((mq2 - mq2Normal) / mq2Normal * 100).abs();
+        } else {
+          percentageDeviations['mq2'] = 0.0;
+        }
+
+        if (mq9Normal != 0) {
+          percentageDeviations['mq9'] =
+              ((mq9 - mq9Normal) / mq9Normal * 100).abs();
+        } else {
+          percentageDeviations['mq9'] = 0.0;
+        }
+
+        if (flameNormal != 0) {
+          percentageDeviations['flame'] =
+              ((flame - flameNormal) / flameNormal * 100).abs();
+        } else {
+          percentageDeviations['flame'] = 0.0;
+        }
+      } catch (e) {
+        print('⚠️ Sensor analysis: Error calculating percentage deviations: $e');
+        percentageDeviations['mq2'] = 0.0;
+        percentageDeviations['mq9'] = 0.0;
+        percentageDeviations['flame'] = 0.0;
+      }
+
+      // Calculate contribution scores (normalized 0-100)
+      final totalDeviation = deviations.values.fold(0.0, (a, b) => a + b);
+      final contributions = <String, double>{};
+
+      if (totalDeviation > 0 && !totalDeviation.isNaN && !totalDeviation.isInfinite) {
+        contributions['mq2'] = (deviations['mq2']! / totalDeviation * 100)
+            .clamp(0.0, 100.0);
+        contributions['mq9'] = (deviations['mq9']! / totalDeviation * 100)
+            .clamp(0.0, 100.0);
+        contributions['flame'] = (deviations['flame']! / totalDeviation * 100)
+            .clamp(0.0, 100.0);
+      } else {
+        // If total deviation is zero or invalid, distribute equally
+        contributions['mq2'] = 33.33;
+        contributions['mq9'] = 33.33;
+        contributions['flame'] = 33.34;
+      }
+
+      // Determine which sensors are abnormal (deviation > 2 standard deviations)
+      const threshold = 2.0; // 2 standard deviations
+      final abnormalSensors = <String>[];
+      if (deviations['mq2']! > threshold && !deviations['mq2']!.isNaN) {
+        abnormalSensors.add('MQ2');
+      }
+      if (deviations['mq9']! > threshold && !deviations['mq9']!.isNaN) {
+        abnormalSensors.add('MQ9');
+      }
+      if (deviations['flame']! > threshold && !deviations['flame']!.isNaN) {
+        abnormalSensors.add('Flame');
+      }
+
+      // Find primary trigger (sensor with highest contribution)
+      String? primaryTrigger;
+      double maxContribution = 0;
+      contributions.forEach((sensor, contribution) {
+        if (contribution > maxContribution && !contribution.isNaN) {
+          maxContribution = contribution;
+          primaryTrigger = sensor.toUpperCase();
+        }
+      });
+
+      // Generate human-readable analysis
+      String analysis = '';
+      try {
+        if (predictedLabel == 'fire') {
+          if (abnormalSensors.isEmpty) {
+            analysis =
+                'All sensors within normal range, but combined readings indicate fire risk.';
+          } else if (abnormalSensors.length == 1) {
+            final sensorKey = abnormalSensors[0].toLowerCase();
+            final deviation = percentageDeviations[sensorKey] ?? 0.0;
+            analysis =
+                '${abnormalSensors[0]} sensor reading is significantly elevated '
+                '(${deviation.toStringAsFixed(1)}% above normal), indicating potential fire.';
+          } else {
+            analysis =
+                'Multiple sensors showing abnormal readings: ${abnormalSensors.join(', ')}. '
+                'Primary trigger: $primaryTrigger (${maxContribution.toStringAsFixed(1)}% contribution).';
+          }
+        } else if (predictedLabel == 'smoke') {
+          if (abnormalSensors.contains('MQ2') || abnormalSensors.contains('MQ9')) {
+            analysis =
+                'Gas sensors (MQ2/MQ9) detecting elevated levels, indicating smoke or gas leak.';
+          } else {
+            analysis = 'Smoke detected based on sensor pattern analysis.';
+          }
+        } else {
+          analysis = 'All sensors reading within normal parameters.';
+        }
+      } catch (e) {
+        print('⚠️ Sensor analysis: Error generating analysis text: $e');
+        analysis = 'Sensor analysis completed.';
+      }
+
+      // Format and return results
+      return {
+        'primaryTrigger': primaryTrigger ?? 'Unknown',
+        'contributions': {
+          'mq2': contributions['mq2']!.toStringAsFixed(1),
+          'mq9': contributions['mq9']!.toStringAsFixed(1),
+          'flame': contributions['flame']!.toStringAsFixed(1),
+        },
+        'deviations': {
+          'mq2': deviations['mq2']!.toStringAsFixed(2),
+          'mq9': deviations['mq9']!.toStringAsFixed(2),
+          'flame': deviations['flame']!.toStringAsFixed(2),
+        },
+        'percentageDeviations': {
+          'mq2': percentageDeviations['mq2']!.toStringAsFixed(1),
+          'mq9': percentageDeviations['mq9']!.toStringAsFixed(1),
+          'flame': percentageDeviations['flame']!.toStringAsFixed(1),
+        },
+        'abnormalSensors': abnormalSensors,
+        'analysis': analysis,
+      };
+    } catch (e, stackTrace) {
+      print('❌ Sensor analysis: Unexpected error: $e');
+      print('Stack trace: $stackTrace');
+      // Return null instead of throwing to prevent breaking the prediction flow
+      return null;
+    }
+  }
+
   Future<Map<String, dynamic>?> predict(String deviceId) async {
     if (!_isModelLoaded || _interpreter == null) {
       print('Fire Prediction Service: Model not loaded. Loading now...');
@@ -187,11 +397,15 @@ class FirePredictionService {
               ? _labelClasses[predictedIndex]
               : 'unknown';
 
+      // Analyze sensor contributions
+      final sensorAnalysis = _analyzeSensorContributions(sensorData, predictedLabel);
+
       return {
         'label': predictedLabel,
         'confidence': maxProb,
         'probabilities': probabilities,
         'sensorData': sensorData,
+        if (sensorAnalysis != null) 'sensorAnalysis': sensorAnalysis,
       };
     } catch (e, stackTrace) {
       print('Fire Prediction Service: Error during prediction: $e');
@@ -247,11 +461,15 @@ class FirePredictionService {
               ? _labelClasses[predictedIndex]
               : 'unknown';
 
+      // Analyze sensor contributions
+      final sensorAnalysis = _analyzeSensorContributions(sensorData, predictedLabel);
+
       return {
         'label': predictedLabel,
         'confidence': maxProb,
         'probabilities': probabilities,
         'sensorData': sensorData,
+        if (sensorAnalysis != null) 'sensorAnalysis': sensorAnalysis,
       };
     } catch (e, stackTrace) {
       print('Fire Prediction Service: Error during prediction: $e');
@@ -396,7 +614,45 @@ class FirePredictionService {
       final bar = '█' * ((prob * 50).round());
       print(' ${classLabel.padRight(12)}: ${percentage.padLeft(6)}% $bar');
     }
-    print('═══════════════════════════════════════════════════════\n');
+
+    // Display sensor contribution analysis if available
+    if (result.containsKey('sensorAnalysis') && result['sensorAnalysis'] != null) {
+      try {
+        final analysis = result['sensorAnalysis'] as Map<String, dynamic>;
+        print('═══════════════════════════════════════════════════════');
+        print('🔍 SENSOR CONTRIBUTION ANALYSIS:');
+        print(' Primary Trigger: ${analysis['primaryTrigger'] ?? 'N/A'}');
+        print('');
+        print(' Contribution Scores:');
+        if (analysis.containsKey('contributions')) {
+          final contributions = analysis['contributions'] as Map<String, dynamic>;
+          contributions.forEach((sensor, score) {
+            print('  ${sensor.toUpperCase().padRight(6)}: ${score.toString().padLeft(6)}%');
+          });
+        }
+        print('');
+        print(' Deviation from Normal:');
+        if (analysis.containsKey('percentageDeviations')) {
+          final deviations = analysis['percentageDeviations'] as Map<String, dynamic>;
+          deviations.forEach((sensor, deviation) {
+            print('  ${sensor.toUpperCase().padRight(6)}: ${deviation.toString().padLeft(6)}%');
+          });
+        }
+        print('');
+        if (analysis.containsKey('abnormalSensors')) {
+          final abnormalSensors = analysis['abnormalSensors'] as List<dynamic>;
+          if (abnormalSensors.isNotEmpty) {
+            print(' Abnormal Sensors: ${abnormalSensors.join(', ')}');
+            print('');
+          }
+        }
+        print(' Analysis: ${analysis['analysis'] ?? 'N/A'}');
+        print('═══════════════════════════════════════════════════════');
+      } catch (e) {
+        print('⚠️ Error displaying sensor analysis: $e');
+      }
+    }
+    print('\n');
   }
 
   Future<void> testPrediction({
@@ -567,6 +823,14 @@ class FirePredictionService {
         print('Warning: Error cancelling listener for $deviceId: $e');
       }
       _deviceListeners.remove(deviceId);
+
+      // Cancel per-device debounce timer
+      _deviceDebounceTimers[deviceId]?.cancel();
+      _deviceDebounceTimers.remove(deviceId);
+
+      // Remove per-device sensor values
+      _deviceLastSensorValues.remove(deviceId);
+
       print('🛑 Stopped real-time prediction listener for device $deviceId');
     } else {
       if (_realtimeListener != null) {
@@ -583,6 +847,13 @@ class FirePredictionService {
     _isListening = _deviceListeners.isNotEmpty || _realtimeListener != null;
     _debounceTimer?.cancel();
     _debounceTimer = null;
+
+    // Cancel all device debounce timers
+    for (var timer in _deviceDebounceTimers.values) {
+      timer.cancel();
+    }
+    _deviceDebounceTimers.clear();
+    _deviceLastSensorValues.clear();
 
     _lastSensorValues = {'mq2': null, 'mq9': null, 'flame': null};
   }
@@ -611,6 +882,13 @@ class FirePredictionService {
     _debounceTimer?.cancel();
     _debounceTimer = null;
 
+    // Cancel all device debounce timers
+    for (var timer in _deviceDebounceTimers.values) {
+      timer.cancel();
+    }
+    _deviceDebounceTimers.clear();
+    _deviceLastSensorValues.clear();
+
     _lastSensorValues = {'mq2': null, 'mq9': null, 'flame': null};
     print('🛑 All real-time prediction listeners stopped');
   }
@@ -625,38 +903,99 @@ class FirePredictionService {
 
     final dbRef = FirebaseDatabase.instance.ref();
 
-    _lastSensorValues = {'mq2': null, 'mq9': null, 'flame': null};
+    // Initialize per-device sensor values
+    _deviceLastSensorValues[deviceId] = {'mq2': null, 'mq9': null, 'flame': null};
+
+    // Make initial prediction on existing data for immediate response
+    try {
+      print('Fire Prediction Service: Making initial prediction for $deviceId...');
+      final initialData = await getSensorData(deviceId);
+      if (initialData != null) {
+        print(
+          'Fire Prediction Service: Initial sensor data found for $deviceId - '
+          'MQ2: ${initialData['mq2']?.toStringAsFixed(1)}, '
+          'MQ9: ${initialData['mq9']?.toStringAsFixed(1)}, '
+          'Flame: ${initialData['flame']?.toStringAsFixed(1)}',
+        );
+        final initialResult = await predictWithValues(
+          initialData['mq2']!,
+          initialData['mq9']!,
+          initialData['flame']!,
+        );
+        if (initialResult != null) {
+          printPrediction(initialResult);
+          await _savePredictionToFirestore(deviceId, initialResult);
+        }
+      } else {
+        print('Fire Prediction Service: No initial sensor data for $deviceId');
+      }
+    } catch (e) {
+      print('Fire Prediction Service: Error in initial prediction for $deviceId: $e');
+    }
 
     final listener = dbRef
         .child('Devices/$deviceId')
         .onValue
         .listen(
           (event) async {
+            print('📡 Real-time Prediction: Data change detected for $deviceId');
+
             final data = event.snapshot.value as Map<dynamic, dynamic>?;
             if (data == null) {
+              print('⚠️ Real-time Prediction: No data for device $deviceId');
               return;
             }
+
+            print('📊 Real-time Prediction: Available keys: ${data.keys.toList()}');
 
             final mq2 = _parseDouble(data['MQ2'] ?? data['mq2']);
             final mq9 = _parseDouble(data['MQ9'] ?? data['mq9']);
             final flame = _parseDouble(data['Flame'] ?? data['flame']);
 
-            if (mq2 != null) _lastSensorValues['mq2'] = mq2;
-            if (mq9 != null) _lastSensorValues['mq9'] = mq9;
-            if (flame != null) _lastSensorValues['flame'] = flame;
+            print(
+              '🔍 Real-time Prediction: Extracted values for $deviceId - '
+              'MQ2: ${mq2?.toStringAsFixed(1) ?? "null"}, '
+              'MQ9: ${mq9?.toStringAsFixed(1) ?? "null"}, '
+              'Flame: ${flame?.toStringAsFixed(1) ?? "null"}',
+            );
 
-            final latestMq2 = mq2 ?? _lastSensorValues['mq2'];
-            final latestMq9 = mq9 ?? _lastSensorValues['mq9'];
-            final latestFlame = flame ?? _lastSensorValues['flame'];
+            // Update per-device last sensor values
+            final deviceLastValues = _deviceLastSensorValues[deviceId] ??
+                {'mq2': null, 'mq9': null, 'flame': null};
+
+            if (mq2 != null) deviceLastValues['mq2'] = mq2;
+            if (mq9 != null) deviceLastValues['mq9'] = mq9;
+            if (flame != null) deviceLastValues['flame'] = flame;
+
+            _deviceLastSensorValues[deviceId] = deviceLastValues;
+
+            final latestMq2 = mq2 ?? deviceLastValues['mq2'];
+            final latestMq9 = mq9 ?? deviceLastValues['mq9'];
+            final latestFlame = flame ?? deviceLastValues['flame'];
 
             if (latestMq2 == null || latestMq9 == null || latestFlame == null) {
+              print(
+                '⏳ Real-time Prediction: Waiting for all sensor data for $deviceId... '
+                '(MQ2: ${latestMq2 != null ? latestMq2.toStringAsFixed(1) : "?"}, '
+                'MQ9: ${latestMq9 != null ? latestMq9.toStringAsFixed(1) : "?"}, '
+                'Flame: ${latestFlame != null ? latestFlame.toStringAsFixed(1) : "?"})',
+              );
               return;
             }
 
-            _debounceTimer?.cancel();
+            // Cancel this device's debounce timer (per-device to prevent interference)
+            _deviceDebounceTimers[deviceId]?.cancel();
 
-            _debounceTimer = Timer(_predictionDebounceDelay, () async {
+            // Use per-device debounce timer
+            _deviceDebounceTimers[deviceId] = Timer(_predictionDebounceDelay, () async {
               try {
+                print('\n🔄 Sensor data updated for $deviceId - Running prediction...');
+                print(
+                  ' MQ2: ${latestMq2.toStringAsFixed(1)}, '
+                  'MQ9: ${latestMq9.toStringAsFixed(1)}, '
+                  'Flame: ${latestFlame.toStringAsFixed(1)}',
+                );
+
                 final result = await predictWithValues(
                   latestMq2,
                   latestMq9,
@@ -710,13 +1049,22 @@ class FirePredictionService {
       final deviceName = deviceData?['name'] as String? ?? 'Your device';
       final deviceAddress = deviceData?['address'] as String?;
 
+      // Prepare prediction data with sensor analysis if available
+      final predictionData = <String, dynamic>{
+        'label': predictedLabel,
+        'confidence': confidence,
+        'timestamp': FieldValue.serverTimestamp(),
+      };
+
+      // Add sensor analysis if available
+      if (predictionResult.containsKey('sensorAnalysis') &&
+          predictionResult['sensorAnalysis'] != null) {
+        predictionData['sensorAnalysis'] = predictionResult['sensorAnalysis'];
+      }
+
       await deviceDocRef.update({
         'alarmType': predictedLabel,
-        'lastPrediction': {
-          'label': predictedLabel,
-          'confidence': confidence,
-          'timestamp': FieldValue.serverTimestamp(),
-        },
+        'lastPrediction': predictionData,
         'lastPredictionAt': FieldValue.serverTimestamp(),
       });
 
